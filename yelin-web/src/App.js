@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import {
   approveDocument as apiApproveDocument,
+  closeRemark as apiCloseRemark,
   createDocumentRemark as apiCreateDocumentRemark,
   login as apiLogin,
   loadWorkspace,
@@ -448,6 +449,11 @@ function App() {
               versions={documentVersions}
               remarks={documentRemarks}
               onOpenRemark={openRemark}
+              onCloseRemark={async (remarkId, payload) => {
+                const response = await apiCloseRemark(remarkId, payload);
+                await applyWorkspace();
+                return response;
+              }}
               actor={session}
               onApproveDocument={async (documentId, payload) => {
                 const response = await apiApproveDocument(documentId, payload);
@@ -461,6 +467,11 @@ function App() {
               }}
               onCreateRemark={async (documentId, payload) => {
                 const response = await apiCreateDocumentRemark(documentId, payload);
+                await applyWorkspace();
+                return response;
+              }}
+              onCloseRemark={async (remarkId, payload) => {
+                const response = await apiCloseRemark(remarkId, payload);
                 await applyWorkspace();
                 return response;
               }}
@@ -1107,6 +1118,7 @@ function DocumentScreen({
   remarks,
   actor,
   onOpenRemark,
+  onCloseRemark,
   onApproveDocument,
   onReturnDocument,
   onCreateRemark,
@@ -1279,7 +1291,11 @@ function DocumentScreen({
 
       <Panel title="Замечания" hint="Все замечания по документу">
         <DataTable
-          columns={['Текст', 'Автор', 'Ответственный', 'Приоритет', 'Статус', 'Срок', 'Комментарий']}
+          columns={
+            role === 'REVIEWER'
+              ? ['Текст', 'Автор', 'Ответственный', 'Приоритет', 'Статус', 'Срок', 'Комментарий', 'Действие']
+              : ['Текст', 'Автор', 'Ответственный', 'Приоритет', 'Статус', 'Срок', 'Комментарий']
+          }
           rows={remarks.map((remark) => [
             remark.text,
             remark.author,
@@ -1288,6 +1304,32 @@ function DocumentScreen({
             <StatusPill key={`${remark.id}-status`} value={remark.status} />,
             formatDate(remark.fixDeadline),
             remark.executorComment || '—',
+            ...(role === 'REVIEWER'
+              ? [
+                  <button
+                    key={`${remark.id}-close`}
+                    className="ghost-button"
+                    type="button"
+                    disabled={remark.status === 'Закрыто'}
+                    onClick={async (event) => {
+                      event.stopPropagation();
+                      const comment = window.prompt('Комментарий к закрытию замечания', remark.executorComment || '');
+                      try {
+                        const result = await onCloseRemark(remark.id, {
+                          actorName: actor.fullName,
+                          actorEmail: actor.email,
+                          comment: comment || remark.executorComment || '',
+                        });
+                        setNote(result?.message || 'Замечание закрыто.');
+                      } catch (error) {
+                        setNote(error.message || 'Не удалось закрыть замечание.');
+                      }
+                    }}
+                  >
+                    Закрыть
+                  </button>,
+                ]
+              : []),
           ])}
           onRowClick={(rowIndex) => onOpenRemark(remarks[rowIndex].id)}
         />
@@ -1296,7 +1338,7 @@ function DocumentScreen({
   );
 }
 
-function RemarksScreen({ role, userEmail, onOpenProject, onOpenDocument, onSelectRemark, selectedRemark }) {
+function RemarksScreen({ role, userEmail, onOpenProject, onOpenDocument, onSelectRemark, selectedRemark, onCloseRemark }) {
   const [search, setSearch] = useState('');
   const [priority, setPriority] = useState('Все');
   const [status, setStatus] = useState('Все');
@@ -1391,6 +1433,28 @@ function RemarksScreen({ role, userEmail, onOpenProject, onOpenDocument, onSelec
               <button className="ghost-button" type="button" onClick={() => onOpenDocument(selectedRemark.documentId)}>
                 Перейти к документу
               </button>
+              {role === 'REVIEWER' && selectedRemark.status !== 'Закрыто' && (
+                <button
+                  className="ghost-button"
+                  type="button"
+                  onClick={async () => {
+                    const comment = window.prompt('Комментарий к закрытию замечания', selectedRemark.executorComment || '');
+                    try {
+                      const result = await onCloseRemark(selectedRemark.id, {
+                        actorName: users.find((user) => user.email === userEmail)?.fullName || 'Система',
+                        actorEmail: userEmail,
+                        comment: comment || selectedRemark.executorComment || '',
+                      });
+                      onSelectRemark(selectedRemark.id);
+                      window.alert(result?.message || 'Замечание закрыто.');
+                    } catch (error) {
+                      window.alert(error.message || 'Не удалось закрыть замечание.');
+                    }
+                  }}
+                >
+                  Закрыть замечание
+                </button>
+              )}
             </div>
           </div>
         </Panel>

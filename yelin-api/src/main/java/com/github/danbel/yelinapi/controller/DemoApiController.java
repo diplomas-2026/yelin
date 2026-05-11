@@ -280,6 +280,24 @@ public class DemoApiController {
         return new ActionResponse("Замечание создано.");
     }
 
+    @PostMapping("/remarks/{remarkId}/close")
+    public ActionResponse closeRemark(@PathVariable Long remarkId, @RequestBody(required = false) ActionRequest request) {
+        RemarkDto updatedRemark = updateRemark(remarkId, remark -> remark.withStatus("Закрыто").withExecutorComment(nonEmpty(request != null ? request.comment() : null, remark.executorComment())));
+        DocumentDto updatedDocument = updateDocument(updatedRemark.documentId(), document -> {
+            if (openRemarksForDocument(document.id()) == 0) {
+                return document.withStatus("На проверке");
+            }
+            return document;
+        });
+
+        addAudit(actorName(request), "Замечание закрыто", updatedRemark.documentName(), "Замечание #" + updatedRemark.id() + " закрыто");
+        notifyByEmail(emailByFullName(updatedRemark.responsible()), "Замечание по документу «" + updatedRemark.documentName() + "» закрыто.", "/remarks/" + updatedRemark.id());
+        notifyByRole("EXECUTOR", "Замечание по документу «" + updatedRemark.documentName() + "» закрыто.", "/remarks/" + updatedRemark.id());
+        return new ActionResponse(updatedDocument.status().equals("На проверке")
+                ? "Замечание закрыто. Документ готов к повторной проверке."
+                : "Замечание закрыто.");
+    }
+
     @PostMapping("/documents/{documentId}/versions")
     public ActionResponse uploadVersion(@PathVariable Long documentId, @RequestBody ActionRequest request) {
         DocumentDto updated = updateDocument(documentId, document -> {
@@ -444,6 +462,18 @@ public class DemoApiController {
             }
         }
         throw new ApiException("Документ не найден");
+    }
+
+    private static RemarkDto updateRemark(Long remarkId, java.util.function.Function<RemarkDto, RemarkDto> updater) {
+        for (int index = 0; index < REMARKS.size(); index++) {
+            RemarkDto remark = REMARKS.get(index);
+            if (remark.id().equals(remarkId)) {
+                RemarkDto updated = updater.apply(remark);
+                REMARKS.set(index, updated);
+                return updated;
+            }
+        }
+        throw new ApiException("Замечание не найдено");
     }
 
     private static DocumentDto findDocument(Long documentId) {
@@ -665,6 +695,14 @@ public class DemoApiController {
         }
 
         public RemarkDto withStageName(String stageName) {
+            return new RemarkDto(id, projectId, stageId, documentId, text, documentName, stageName, author, responsible, priority, status, fixDeadline, executorComment);
+        }
+
+        public RemarkDto withStatus(String status) {
+            return new RemarkDto(id, projectId, stageId, documentId, text, documentName, stageName, author, responsible, priority, status, fixDeadline, executorComment);
+        }
+
+        public RemarkDto withExecutorComment(String executorComment) {
             return new RemarkDto(id, projectId, stageId, documentId, text, documentName, stageName, author, responsible, priority, status, fixDeadline, executorComment);
         }
     }

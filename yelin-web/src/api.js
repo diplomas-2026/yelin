@@ -91,6 +91,13 @@ export function createDocumentRemark(documentId, payload) {
   });
 }
 
+export function closeRemark(remarkId, payload) {
+  return request(`/remarks/${remarkId}/close`, {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
+}
+
 export function uploadDocumentVersion(documentId, payload) {
   return request(`/documents/${documentId}/versions`, {
     method: 'POST',
