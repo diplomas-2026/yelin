@@ -75,6 +75,8 @@ const emptyTextByScreen = {
   tasks: 'Задач нет.',
 };
 
+const sessionStorageKey = 'yelin-session';
+
 const screenPathMap = {
   dashboard: '/dashboard',
   board: '/board',
@@ -126,7 +128,14 @@ function parsePathIds(pathname) {
 function App() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(sessionStorageKey);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [login, setLogin] = useState(defaultLogin);
   const [loginError, setLoginError] = useState('');
   const [activeScreen, setActiveScreen] = useState('dashboard');
@@ -210,6 +219,31 @@ function App() {
 
   useEffect(() => {
     if (!session) {
+      try {
+        window.localStorage.removeItem(sessionStorageKey);
+      } catch {
+        // ignore storage errors
+      }
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(sessionStorageKey, JSON.stringify(session));
+    } catch {
+      // ignore storage errors
+    }
+
+    applyWorkspace().catch((error) => {
+      console.error(error);
+    });
+
+    if (location.pathname === '/' || location.pathname === '/login') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [session, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (!session) {
       if (location.pathname !== '/login') {
         navigate('/login', { replace: true });
       }
@@ -287,7 +321,6 @@ function App() {
           try {
             setLoginError('');
             const account = await apiLogin(login.email, login.password);
-            await applyWorkspace();
             setSession(account);
             setActiveScreen('dashboard');
             setSelectedProjectId(1);
