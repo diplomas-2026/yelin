@@ -301,7 +301,28 @@ function App() {
             />
           )}
 
-          {screen === 'tasks' && <TasksScreen role={session.role} />}
+          {screen === 'tasks' && (
+            <TasksScreen
+              role={session.role}
+              onOpenProject={(projectId) => {
+                setSelectedProjectId(projectId);
+                setActiveScreen('project');
+              }}
+              onOpenStage={(stageId) => {
+                setSelectedStageId(stageId);
+                setActiveScreen('stage');
+              }}
+              onOpenDocument={(documentId) => {
+                setSelectedDocumentId(documentId);
+                setActiveScreen('document');
+              }}
+              onOpenRemark={(remarkId) => {
+                setSelectedRemarkId(remarkId);
+                setActiveScreen('remarks');
+              }}
+              onOpenReview={() => setActiveScreen('review')}
+            />
+          )}
 
           {screen === 'review' && <ReviewScreen role={session.role} />}
 
@@ -1023,8 +1044,34 @@ function RemarksScreen({ role, userEmail, onOpenProject, onOpenDocument, onSelec
   );
 }
 
-function TasksScreen({ role }) {
+function TasksScreen({ role, onOpenProject, onOpenStage, onOpenDocument, onOpenRemark, onOpenReview }) {
   const tasks = getTasksForRole(role);
+
+  const openTask = (task) => {
+    if (task.type.includes('Документ на проверке')) {
+      onOpenReview?.();
+      return;
+    }
+
+    if (task.remarkId) {
+      onOpenRemark?.(task.remarkId);
+      return;
+    }
+
+    if (task.documentId) {
+      onOpenDocument?.(task.documentId);
+      return;
+    }
+
+    if (task.stageId) {
+      onOpenStage?.(task.stageId);
+      return;
+    }
+
+    if (task.projectId) {
+      onOpenProject?.(task.projectId);
+    }
+  };
 
   return (
     <div className="screen-grid">
@@ -1036,8 +1083,19 @@ function TasksScreen({ role }) {
 
       <Panel title="Мои задачи" hint="Персональный список действий">
         <DataTable
-          columns={['Тип', 'Проект', 'Этап', 'Документ', 'Описание', 'Приоритет', 'Дедлайн', 'Статус']}
+          columns={['Открыть', 'Тип', 'Проект', 'Этап', 'Документ', 'Описание', 'Приоритет', 'Дедлайн', 'Статус']}
           rows={tasks.map((task) => [
+            <button
+              key={`open-${task.id}`}
+              type="button"
+              className="task-open-button"
+              onClick={(event) => {
+                event.stopPropagation();
+                openTask(task);
+              }}
+            >
+              Открыть
+            </button>,
             task.type,
             task.project,
             task.stage || '—',
@@ -1047,6 +1105,7 @@ function TasksScreen({ role }) {
             formatDate(task.deadline),
             <StatusPill key={`${task.id}-status`} value={task.status} />,
           ])}
+          onRowClick={(rowIndex) => openTask(tasks[rowIndex])}
         />
       </Panel>
     </div>

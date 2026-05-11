@@ -399,6 +399,10 @@
   background: rgba(20, 184, 166, 0.08);
 }
 
+.data-table tbody tr.clickable-row td:first-child {
+  white-space: nowrap;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -571,6 +575,20 @@
   font-weight: 700;
   padding: 0;
   cursor: pointer;
+}
+
+.task-open-button {
+  border: 1px solid rgba(26, 115, 232, 0.18);
+  border-radius: 999px;
+  background: rgba(26, 115, 232, 0.08);
+  color: #174ea6;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.task-open-button:hover {
+  background: rgba(26, 115, 232, 0.14);
 }
 
 .action-grid {

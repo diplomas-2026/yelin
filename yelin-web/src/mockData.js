@@ -151,19 +151,19 @@ export const documentReviewQueue = [
 
 export const taskBoard = {
   EXECUTOR: [
-    { id: 1, type: 'Этап', project: 'Многоэтажный жилой дом', stage: 'Проектная документация', document: '', description: 'Продолжить выпуск раздела ПД', priority: 'Высокий', deadline: '2026-06-20', status: 'В работе' },
-    { id: 2, type: 'Замечание', project: 'Многоэтажный жилой дом', stage: 'Проектная документация', document: 'План 1 этажа', description: 'Уточнить размеры эвакуационного выхода', priority: 'Высокий', deadline: '2026-05-18', status: 'В работе' },
-    { id: 3, type: 'Документ', project: 'Административное здание', stage: 'Эскизный проект', document: 'Фасад главный', description: 'Загрузить обновленную версию', priority: 'Средний', deadline: '2026-05-20', status: 'Ожидает' },
+    { id: 1, type: 'Этап', projectId: 1, stageId: 3, project: 'Многоэтажный жилой дом', stage: 'Проектная документация', documentId: null, document: '', remarkId: null, description: 'Продолжить выпуск раздела ПД', priority: 'Высокий', deadline: '2026-06-20', status: 'В работе' },
+    { id: 2, type: 'Замечание', projectId: 1, stageId: 3, project: 'Многоэтажный жилой дом', stage: 'Проектная документация', documentId: 2, document: 'План 1 этажа', remarkId: 1, description: 'Уточнить размеры эвакуационного выхода', priority: 'Высокий', deadline: '2026-05-18', status: 'В работе' },
+    { id: 3, type: 'Документ', projectId: 2, stageId: 8, project: 'Административное здание', stage: 'Эскизный проект', documentId: 3, document: 'Фасад главный', remarkId: null, description: 'Загрузить обновленную версию', priority: 'Средний', deadline: '2026-05-20', status: 'Ожидает' },
   ],
   REVIEWER: [
-    { id: 1, type: 'Документ на проверке', project: 'Многоэтажный жилой дом', stage: 'Проектная документация', document: 'План 1 этажа', description: 'Проверить обновленную версию', priority: 'Высокий', deadline: '2026-05-12', status: 'В работе' },
-    { id: 2, type: 'Замечание на повторной проверке', project: 'Реконструкция общественного здания', stage: 'Проектная документация', document: 'Архитектурные решения', description: 'Повторно проверить исправления', priority: 'Средний', deadline: '2026-05-13', status: 'Ожидает' },
-    { id: 3, type: 'Этап к принятию', project: 'Административное здание', stage: 'Эскизный проект', document: '', description: 'Принять этап после проверки документов', priority: 'Средний', deadline: '2026-05-20', status: 'Ожидает' },
+    { id: 1, type: 'Документ на проверке', projectId: 1, stageId: 3, project: 'Многоэтажный жилой дом', stage: 'Проектная документация', documentId: 2, document: 'План 1 этажа', remarkId: null, description: 'Проверить обновленную версию', priority: 'Высокий', deadline: '2026-05-12', status: 'В работе' },
+    { id: 2, type: 'Замечание на повторной проверке', projectId: 3, stageId: 15, project: 'Реконструкция общественного здания', stage: 'Проектная документация', documentId: 4, document: 'Архитектурные решения', remarkId: 4, description: 'Повторно проверить исправления', priority: 'Средний', deadline: '2026-05-13', status: 'Ожидает' },
+    { id: 3, type: 'Этап к принятию', projectId: 2, stageId: 8, project: 'Административное здание', stage: 'Эскизный проект', documentId: 3, document: '', remarkId: null, description: 'Принять этап после проверки документов', priority: 'Средний', deadline: '2026-05-20', status: 'Ожидает' },
   ],
   PROJECT_MANAGER: [
-    { id: 1, type: 'Просроченный проект', project: 'Реконструкция общественного здания', stage: 'Рабочая документация', document: '', description: 'Проект требует вмешательства', priority: 'Критический', deadline: '2026-05-10', status: 'Просрочен' },
-    { id: 2, type: 'Риск просрочки этапа', project: 'Многоэтажный жилой дом', stage: 'Проектная документация', document: '', description: 'Нужно ускорить согласования', priority: 'Высокий', deadline: '2026-06-20', status: 'В работе' },
-    { id: 3, type: 'Критическое замечание', project: 'Административное здание', stage: 'Эскизный проект', document: 'Фасад главный', description: 'Требуется решение от проверяющего', priority: 'Критический', deadline: '2026-05-16', status: 'Открыто' },
+    { id: 1, type: 'Просроченный проект', projectId: 3, stageId: 16, project: 'Реконструкция общественного здания', stage: 'Рабочая документация', documentId: null, document: '', remarkId: null, description: 'Проект требует вмешательства', priority: 'Критический', deadline: '2026-05-10', status: 'Просрочен' },
+    { id: 2, type: 'Риск просрочки этапа', projectId: 1, stageId: 3, project: 'Многоэтажный жилой дом', stage: 'Проектная документация', documentId: null, document: '', remarkId: null, description: 'Нужно ускорить согласования', priority: 'Высокий', deadline: '2026-06-20', status: 'В работе' },
+    { id: 3, type: 'Критическое замечание', projectId: 2, stageId: 8, project: 'Административное здание', stage: 'Эскизный проект', documentId: 3, document: 'Фасад главный', remarkId: 3, description: 'Требуется решение от проверяющего', priority: 'Критический', deadline: '2026-05-16', status: 'Открыто' },
   ],
 };
 
