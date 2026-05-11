@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import {
   approveDocument as apiApproveDocument,
@@ -73,7 +74,57 @@ const emptyTextByScreen = {
   tasks: 'Задач нет.',
 };
 
+const screenPathMap = {
+  dashboard: '/dashboard',
+  board: '/board',
+  projects: '/projects',
+  tasks: '/tasks',
+  review: '/review',
+  remarks: '/remarks',
+  notifications: '/notifications',
+  users: '/users',
+  audit: '/audit',
+};
+
+function screenFromPath(pathname) {
+  if (pathname === '/' || pathname === '') return 'dashboard';
+  if (pathname.startsWith('/board')) return 'board';
+  if (pathname.startsWith('/projects/') && /\/stages\/\d+\/documents\/\d+/.test(pathname)) return 'document';
+  if (pathname.startsWith('/projects/') && /\/stages\/\d+$/.test(pathname)) return 'stage';
+  if (pathname.startsWith('/projects/')) return 'project';
+  if (pathname.startsWith('/tasks')) return 'tasks';
+  if (pathname.startsWith('/review')) return 'review';
+  if (pathname.startsWith('/remarks/')) return 'remarks';
+  if (pathname.startsWith('/remarks')) return 'remarks';
+  if (pathname.startsWith('/notifications')) return 'notifications';
+  if (pathname.startsWith('/users')) return 'users';
+  if (pathname.startsWith('/audit')) return 'audit';
+  if (pathname.startsWith('/dashboard')) return 'dashboard';
+  if (pathname.startsWith('/projects')) return 'projects';
+  return 'dashboard';
+}
+
+function pathForScreen(screen) {
+  return screenPathMap[screen] || '/dashboard';
+}
+
+function parsePathIds(pathname) {
+  const projectMatch = pathname.match(/^\/projects\/(\d+)/);
+  const stageMatch = pathname.match(/^\/projects\/\d+\/stages\/(\d+)/);
+  const documentMatch = pathname.match(/^\/projects\/\d+\/stages\/\d+\/documents\/(\d+)/);
+  const remarkMatch = pathname.match(/^\/remarks\/(\d+)/);
+
+  return {
+    projectId: projectMatch ? Number(projectMatch[1]) : null,
+    stageId: stageMatch ? Number(stageMatch[1]) : null,
+    documentId: documentMatch ? Number(documentMatch[1]) : null,
+    remarkId: remarkMatch ? Number(remarkMatch[1]) : null,
+  };
+}
+
 function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [session, setSession] = useState(null);
   const [login, setLogin] = useState(defaultLogin);
   const [loginError, setLoginError] = useState('');
@@ -83,6 +134,54 @@ function App() {
   const [selectedDocumentId, setSelectedDocumentId] = useState(2);
   const [selectedRemarkId, setSelectedRemarkId] = useState(1);
   const [notificationsState, setNotificationsState] = useState(seedNotifications);
+
+  const goToScreen = (screen) => {
+    navigate(pathForScreen(screen));
+  };
+
+  const openProject = (projectId) => {
+    setSelectedProjectId(projectId);
+    navigate(`/projects/${projectId}`);
+  };
+
+  const openStage = (stageId) => {
+    const stage = stages.find((item) => item.id === stageId);
+    const projectId = stage?.projectId ?? selectedProjectId;
+    if (projectId) {
+      setSelectedProjectId(projectId);
+    }
+    setSelectedStageId(stageId);
+    navigate(`/projects/${projectId || selectedProjectId}/stages/${stageId}`);
+  };
+
+  const openDocument = (documentId, projectIdOverride, stageIdOverride) => {
+    const document = documents.find((item) => item.id === documentId);
+    const projectId = projectIdOverride ?? document?.projectId ?? selectedProjectId;
+    const stageId = stageIdOverride ?? document?.stageId ?? selectedStageId;
+    if (projectId) {
+      setSelectedProjectId(projectId);
+    }
+    if (stageId) {
+      setSelectedStageId(stageId);
+    }
+    setSelectedDocumentId(documentId);
+    navigate(`/projects/${projectId || selectedProjectId}/stages/${stageId || selectedStageId}/documents/${documentId}`);
+  };
+
+  const openRemark = (remarkId) => {
+    const remark = remarks.find((item) => item.id === remarkId);
+    if (remark?.projectId) {
+      setSelectedProjectId(remark.projectId);
+    }
+    if (remark?.stageId) {
+      setSelectedStageId(remark.stageId);
+    }
+    if (remark?.documentId) {
+      setSelectedDocumentId(remark.documentId);
+    }
+    setSelectedRemarkId(remarkId);
+    navigate(`/remarks/${remarkId}`);
+  };
 
   const applyWorkspace = async () => {
     const workspace = await loadWorkspace();
@@ -107,6 +206,41 @@ function App() {
     setNotificationsState(mergedNotifications);
     return workspace;
   };
+
+  useEffect(() => {
+    if (!session) {
+      if (location.pathname !== '/login') {
+        navigate('/login', { replace: true });
+      }
+      return;
+    }
+
+    const nextScreen = screenFromPath(location.pathname);
+    setActiveScreen(nextScreen);
+    const ids = parsePathIds(location.pathname);
+
+    if (nextScreen === 'project' || nextScreen === 'stage' || nextScreen === 'document') {
+      if (ids.projectId) setSelectedProjectId(ids.projectId);
+      if (ids.stageId) setSelectedStageId(ids.stageId);
+      if (ids.documentId) setSelectedDocumentId(ids.documentId);
+    }
+
+    if (nextScreen === 'remarks') {
+      if (ids.remarkId) {
+        const remark = remarks.find((item) => item.id === ids.remarkId);
+        if (remark) {
+          if (remark.projectId) setSelectedProjectId(remark.projectId);
+          if (remark.stageId) setSelectedStageId(remark.stageId);
+          if (remark.documentId) setSelectedDocumentId(remark.documentId);
+        }
+        setSelectedRemarkId(ids.remarkId);
+      }
+    }
+
+    if (nextScreen === 'dashboard' || nextScreen === 'board' || nextScreen === 'projects' || nextScreen === 'tasks' || nextScreen === 'review' || nextScreen === 'notifications' || nextScreen === 'users' || nextScreen === 'audit') {
+      setSelectedProjectId((current) => current || 1);
+    }
+  }, [location.pathname, navigate, session, remarks]);
 
   const accessibleProjects = useMemo(() => {
     if (!session) return [];
@@ -159,6 +293,7 @@ function App() {
             setSelectedStageId(3);
             setSelectedDocumentId(2);
             setSelectedRemarkId(1);
+            navigate('/dashboard', { replace: true });
           } catch (error) {
             setLoginError(error.message || 'Неверный email или пароль.');
           }
@@ -195,14 +330,13 @@ function App() {
 
         <nav className="nav">
           {visibleScreens.map((item) => (
-            <button
+            <NavLink
               key={item}
-              className={`nav-item ${screen === item ? 'active' : ''}`}
-              type="button"
-              onClick={() => setActiveScreen(item)}
+              to={pathForScreen(item)}
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
               <span>{menuLabels[item]}</span>
-            </button>
+            </NavLink>
           ))}
         </nav>
 
@@ -222,7 +356,7 @@ function App() {
           </div>
 
           <div className="topbar-actions">
-            <button className="ghost-button" type="button" onClick={() => setActiveScreen('notifications')}>
+            <button className="ghost-button" type="button" onClick={() => goToScreen('notifications')}>
               Уведомления <span className="badge">{roleNotifications.filter((item) => !item.read).length}</span>
             </button>
             <div className="user-chip">
@@ -239,6 +373,7 @@ function App() {
                 setSession(null);
                 setLogin(defaultLogin);
                 setLoginError('');
+                navigate('/login', { replace: true });
               }}
             >
               Выйти
@@ -252,12 +387,9 @@ function App() {
               role={session.role}
               projects={projectsForRole}
               tasks={roleTasks}
-              onOpenProject={(projectId) => {
-                setSelectedProjectId(projectId);
-                setActiveScreen('project');
-              }}
-              onOpenTasks={() => setActiveScreen('tasks')}
-              onOpenReview={() => setActiveScreen('review')}
+              onOpenProject={openProject}
+              onOpenTasks={() => goToScreen('tasks')}
+              onOpenReview={() => goToScreen('review')}
             />
           )}
 
@@ -266,23 +398,11 @@ function App() {
               role={session.role}
               tasks={roleTasks}
               reviewQueue={reviewQueue}
-              onOpenProject={(projectId) => {
-                setSelectedProjectId(projectId);
-                setActiveScreen('project');
-              }}
-              onOpenStage={(stageId) => {
-                setSelectedStageId(stageId);
-                setActiveScreen('stage');
-              }}
-              onOpenDocument={(documentId) => {
-                setSelectedDocumentId(documentId);
-                setActiveScreen('document');
-              }}
-              onOpenRemark={(remarkId) => {
-                setSelectedRemarkId(remarkId);
-                setActiveScreen('remarks');
-              }}
-              onOpenReview={() => setActiveScreen('review')}
+              onOpenProject={openProject}
+              onOpenStage={openStage}
+              onOpenDocument={openDocument}
+              onOpenRemark={openRemark}
+              onOpenReview={() => goToScreen('review')}
             />
           )}
 
@@ -290,10 +410,7 @@ function App() {
             <ProjectsScreen
               role={session.role}
               projects={projectsForRole}
-              onOpenProject={(projectId) => {
-                setSelectedProjectId(projectId);
-                setActiveScreen('project');
-              }}
+              onOpenProject={openProject}
             />
           )}
 
@@ -305,14 +422,8 @@ function App() {
               documents={currentDocuments}
               remarks={projectRemarks}
               history={auditLog}
-              onOpenStage={(stageId) => {
-                setSelectedStageId(stageId);
-                setActiveScreen('stage');
-              }}
-              onOpenDocument={(documentId) => {
-                setSelectedDocumentId(documentId);
-                setActiveScreen('document');
-              }}
+              onOpenStage={openStage}
+              onOpenDocument={openDocument}
             />
           )}
 
@@ -323,11 +434,8 @@ function App() {
               documents={stageDocuments}
               remarks={stageRemarks}
               history={auditLog}
-              onOpenDocument={(documentId) => {
-                setSelectedDocumentId(documentId);
-                setActiveScreen('document');
-              }}
-              onOpenProject={() => setActiveScreen('project')}
+              onOpenDocument={openDocument}
+              onOpenProject={() => openProject(currentProject.id)}
             />
           )}
 
@@ -339,10 +447,7 @@ function App() {
               document={currentDocument}
               versions={documentVersions}
               remarks={documentRemarks}
-              onOpenRemark={(remarkId) => {
-                setSelectedRemarkId(remarkId);
-                setActiveScreen('remarks');
-              }}
+              onOpenRemark={openRemark}
               actor={session}
               onApproveDocument={async (documentId, payload) => {
                 const response = await apiApproveDocument(documentId, payload);
@@ -376,14 +481,8 @@ function App() {
             <RemarksScreen
               role={session.role}
               userEmail={session.email}
-              onOpenProject={(projectId) => {
-                setSelectedProjectId(projectId);
-                setActiveScreen('project');
-              }}
-              onOpenDocument={(documentId) => {
-                setSelectedDocumentId(documentId);
-                setActiveScreen('document');
-              }}
+              onOpenProject={openProject}
+              onOpenDocument={openDocument}
               onSelectRemark={(remarkId) => setSelectedRemarkId(remarkId)}
               selectedRemark={currentRemark}
             />
@@ -392,35 +491,18 @@ function App() {
           {screen === 'tasks' && (
             <TasksScreen
               role={session.role}
-              onOpenProject={(projectId) => {
-                setSelectedProjectId(projectId);
-                setActiveScreen('project');
-              }}
-              onOpenStage={(stageId) => {
-                setSelectedStageId(stageId);
-                setActiveScreen('stage');
-              }}
-              onOpenDocument={(documentId) => {
-                setSelectedDocumentId(documentId);
-                setActiveScreen('document');
-              }}
-              onOpenRemark={(remarkId) => {
-                setSelectedRemarkId(remarkId);
-                setActiveScreen('remarks');
-              }}
-              onOpenReview={() => setActiveScreen('review')}
+              onOpenProject={openProject}
+              onOpenStage={openStage}
+              onOpenDocument={openDocument}
+              onOpenRemark={openRemark}
+              onOpenReview={() => goToScreen('review')}
             />
           )}
 
           {screen === 'review' && (
             <ReviewScreen
               role={session.role}
-              onOpenDocument={(documentId, projectId, stageId) => {
-                setSelectedDocumentId(documentId);
-                setSelectedProjectId(projectId);
-                setSelectedStageId(stageId);
-                setActiveScreen('document');
-              }}
+              onOpenDocument={openDocument}
             />
           )}
 
@@ -449,14 +531,11 @@ function App() {
                 const remarkMatch = link.match(/remarks\/(\d+)/);
 
                 if (projectMatch) {
-                  setSelectedProjectId(Number(projectMatch[1]));
-                  setActiveScreen('project');
+                  openProject(Number(projectMatch[1]));
                 } else if (documentMatch) {
-                  setSelectedDocumentId(Number(documentMatch[1]));
-                  setActiveScreen('document');
+                  openDocument(Number(documentMatch[1]));
                 } else if (remarkMatch) {
-                  setSelectedRemarkId(Number(remarkMatch[1]));
-                  setActiveScreen('remarks');
+                  openRemark(Number(remarkMatch[1]));
                 }
               }}
             />
