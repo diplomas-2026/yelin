@@ -132,6 +132,8 @@ function App() {
 
   const visibleScreens = roleMenu[session.role] ?? roleMenu.EXECUTOR;
   const projectsForRole = accessibleProjects;
+  const roleTasks = getTasksForRole(session.role);
+  const reviewQueue = filterDocumentsForReview(session.role);
   const roleNotifications = notificationsState.filter((notification) => notification.userEmail === session.email);
   const projectRemarks = currentProject ? getRemarksByProject(currentProject.id) : [];
   const projectMembers = currentProject ? getProjectMembers(currentProject.id) : [];
@@ -210,11 +212,16 @@ function App() {
         <section className="screen">
           {screen === 'dashboard' && (
             <DashboardScreen
+              role={session.role}
               projects={projectsForRole}
+              tasks={roleTasks}
+              reviewQueue={reviewQueue}
               onOpenProject={(projectId) => {
                 setSelectedProjectId(projectId);
                 setActiveScreen('project');
               }}
+              onOpenTasks={() => setActiveScreen('tasks')}
+              onOpenReview={() => setActiveScreen('review')}
             />
           )}
 
@@ -383,12 +390,44 @@ function LoginScreen({ login, setLogin, error, onSubmit }) {
   );
 }
 
-function DashboardScreen({ projects, onOpenProject }) {
+function DashboardScreen({ role, projects, tasks, reviewQueue, onOpenProject, onOpenTasks, onOpenReview }) {
   const visibleProjectIds = new Set(projects.map((project) => project.id));
   const roleStages = stages.filter((stage) => visibleProjectIds.has(stage.projectId));
   const roleDocuments = documents.filter((document) => visibleProjectIds.has(document.projectId));
   const roleRemarks = remarks.filter((remark) => visibleProjectIds.has(remark.projectId));
   const countByStatus = (status) => projects.filter((project) => project.status === status).length;
+  const nextActions = tasks.slice(0, 3);
+  const kanbanColumns = [
+    { key: 'todo', title: 'К выполнению' },
+    { key: 'progress', title: 'В работе' },
+    { key: 'review', title: 'На проверке' },
+    { key: 'done', title: 'Готово' },
+  ];
+
+  const kanbanItems = [
+    ...tasks.map((task) => ({
+      id: `task-${task.id}`,
+      lane: task.status === 'В работе' ? 'progress' : task.status === 'Ожидает' ? 'todo' : task.status === 'Просрочен' ? 'todo' : 'done',
+      title: task.type,
+      project: task.project,
+      subtitle: task.stage || task.document || 'Без уточнения',
+      detail: task.description,
+      status: task.status,
+      priority: task.priority,
+      deadline: task.deadline,
+    })),
+    ...reviewQueue.map((item) => ({
+      id: `review-${item.id}`,
+      lane: item.status === 'На повторной проверке' ? 'review' : 'review',
+      title: item.name,
+      project: item.projectName,
+      subtitle: item.stageName,
+      detail: item.documentType,
+      status: item.status,
+      priority: item.remarksCount > 1 ? 'Высокий' : 'Средний',
+      deadline: item.sentAt,
+    })),
+  ];
 
   const stats = [
     { label: 'Всего проектов', value: projects.length, tone: 'neutral' },
@@ -403,6 +442,52 @@ function DashboardScreen({ projects, onOpenProject }) {
 
   return (
     <div className="screen-grid">
+      <div className="hero-card dashboard-hero">
+        <div>
+          <div className="eyebrow">Рабочий старт</div>
+          <h2>Сейчас главное для вас</h2>
+          <p>
+            Здесь собраны ближайшие действия, чтобы не искать, с чего начать. Откройте задачи, документы на проверке или нужный проект.
+          </p>
+        </div>
+        <div className="hero-cta-group">
+          <button className="primary-button" type="button" onClick={onOpenTasks}>
+            Открыть задачи
+          </button>
+          {(role === 'REVIEWER' || role === 'PROJECT_MANAGER' || role === 'ADMIN') && (
+            <button className="ghost-button" type="button" onClick={onOpenReview}>
+              Документы на проверке
+            </button>
+          )}
+        </div>
+      </div>
+
+      <Panel title="Что нужно сделать сейчас" hint="Самые важные действия в ближайшую очередь">
+        <div className="action-grid">
+          {nextActions.length === 0 ? (
+            <EmptyScreen title="Нет срочных задач" text="Сейчас у вас нет активных задач в очереди." />
+          ) : (
+            nextActions.map((task) => (
+              <div key={`${task.type}-${task.project}-${task.deadline}`} className="action-card">
+                <div className="action-card-top">
+                  <StatusPill value={task.priority} />
+                  <StatusPill value={task.status} />
+                </div>
+                <strong>{task.type}</strong>
+                <span>{task.project}</span>
+                <span>{task.stage || task.document || task.description}</span>
+                <div className="action-card-bottom">
+                  <span>Срок: {formatDate(task.deadline)}</span>
+                  <button className="text-button" type="button" onClick={onOpenTasks}>
+                    Подробнее
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Panel>
+
       <div className="stats-grid">
         {stats.map((stat) => (
           <StatCard key={stat.label} {...stat} />
@@ -475,6 +560,42 @@ function DashboardScreen({ projects, onOpenProject }) {
           </div>
         </Panel>
       </div>
+
+      <Panel title="Канбан доска" hint="Разложение задач по состояниям">
+        <div className="kanban-board">
+          {kanbanColumns.map((column) => (
+            <div key={column.key} className="kanban-column">
+              <div className="kanban-column-head">
+                <strong>{column.title}</strong>
+                <span>{kanbanItems.filter((item) => item.lane === column.key).length}</span>
+              </div>
+              <div className="kanban-column-body">
+                {kanbanItems
+                  .filter((item) => item.lane === column.key)
+                  .slice(0, 4)
+                  .map((item) => (
+                    <div key={item.id} className="kanban-card">
+                      <div className="kanban-card-head">
+                        <strong>{item.title}</strong>
+                        <StatusPill value={item.status} />
+                      </div>
+                      <div className="kanban-card-project">{item.project}</div>
+                      <div className="kanban-card-subtitle">{item.subtitle}</div>
+                      <div className="kanban-card-detail">{item.detail}</div>
+                      <div className="kanban-card-meta">
+                        <span>{item.priority}</span>
+                        <span>{formatDate(item.deadline)}</span>
+                      </div>
+                    </div>
+                  ))}
+                {kanbanItems.filter((item) => item.lane === column.key).length === 0 && (
+                  <div className="kanban-empty">Нет карточек</div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
     </div>
   );
 }
