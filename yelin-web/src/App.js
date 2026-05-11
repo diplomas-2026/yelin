@@ -39,6 +39,7 @@ const defaultLogin = { email: '', password: '' };
 
 const screenMeta = {
   dashboard: { title: 'Дашборд', subtitle: 'Общее состояние проектов и проблемных зон' },
+  board: { title: 'Канбан', subtitle: 'Задачи и документы, разложенные по статусам' },
   projects: { title: 'Проекты', subtitle: 'Список доступных проектов с фильтрами и быстрым доступом' },
   project: { title: 'Карточка проекта', subtitle: 'Подробная информация по выбранному проекту' },
   stage: { title: 'Карточка этапа', subtitle: 'Контроль этапа, документов и замечаний' },
@@ -215,12 +216,36 @@ function App() {
               role={session.role}
               projects={projectsForRole}
               tasks={roleTasks}
-              reviewQueue={reviewQueue}
               onOpenProject={(projectId) => {
                 setSelectedProjectId(projectId);
                 setActiveScreen('project');
               }}
               onOpenTasks={() => setActiveScreen('tasks')}
+              onOpenReview={() => setActiveScreen('review')}
+            />
+          )}
+
+          {screen === 'board' && (
+            <BoardScreen
+              role={session.role}
+              tasks={roleTasks}
+              reviewQueue={reviewQueue}
+              onOpenProject={(projectId) => {
+                setSelectedProjectId(projectId);
+                setActiveScreen('project');
+              }}
+              onOpenStage={(stageId) => {
+                setSelectedStageId(stageId);
+                setActiveScreen('stage');
+              }}
+              onOpenDocument={(documentId) => {
+                setSelectedDocumentId(documentId);
+                setActiveScreen('document');
+              }}
+              onOpenRemark={(remarkId) => {
+                setSelectedRemarkId(remarkId);
+                setActiveScreen('remarks');
+              }}
               onOpenReview={() => setActiveScreen('review')}
             />
           )}
@@ -324,7 +349,17 @@ function App() {
             />
           )}
 
-          {screen === 'review' && <ReviewScreen role={session.role} />}
+          {screen === 'review' && (
+            <ReviewScreen
+              role={session.role}
+              onOpenDocument={(documentId, projectId, stageId) => {
+                setSelectedDocumentId(documentId);
+                setSelectedProjectId(projectId);
+                setSelectedStageId(stageId);
+                setActiveScreen('document');
+              }}
+            />
+          )}
 
           {screen === 'notifications' && (
             <NotificationsScreen
@@ -411,44 +446,13 @@ function LoginScreen({ login, setLogin, error, onSubmit }) {
   );
 }
 
-function DashboardScreen({ role, projects, tasks, reviewQueue, onOpenProject, onOpenTasks, onOpenReview }) {
+function DashboardScreen({ role, projects, tasks, onOpenProject, onOpenTasks, onOpenReview }) {
   const visibleProjectIds = new Set(projects.map((project) => project.id));
   const roleStages = stages.filter((stage) => visibleProjectIds.has(stage.projectId));
   const roleDocuments = documents.filter((document) => visibleProjectIds.has(document.projectId));
   const roleRemarks = remarks.filter((remark) => visibleProjectIds.has(remark.projectId));
   const countByStatus = (status) => projects.filter((project) => project.status === status).length;
   const nextActions = tasks.slice(0, 3);
-  const kanbanColumns = [
-    { key: 'todo', title: 'К выполнению' },
-    { key: 'progress', title: 'В работе' },
-    { key: 'review', title: 'На проверке' },
-    { key: 'done', title: 'Готово' },
-  ];
-
-  const kanbanItems = [
-    ...tasks.map((task) => ({
-      id: `task-${task.id}`,
-      lane: task.status === 'В работе' ? 'progress' : task.status === 'Ожидает' ? 'todo' : task.status === 'Просрочен' ? 'todo' : 'done',
-      title: task.type,
-      project: task.project,
-      subtitle: task.stage || task.document || 'Без уточнения',
-      detail: task.description,
-      status: task.status,
-      priority: task.priority,
-      deadline: task.deadline,
-    })),
-    ...reviewQueue.map((item) => ({
-      id: `review-${item.id}`,
-      lane: item.status === 'На повторной проверке' ? 'review' : 'review',
-      title: item.name,
-      project: item.projectName,
-      subtitle: item.stageName,
-      detail: item.documentType,
-      status: item.status,
-      priority: item.remarksCount > 1 ? 'Высокий' : 'Средний',
-      deadline: item.sentAt,
-    })),
-  ];
 
   const stats = [
     { label: 'Всего проектов', value: projects.length, tone: 'neutral' },
@@ -581,8 +585,94 @@ function DashboardScreen({ role, projects, tasks, reviewQueue, onOpenProject, on
           </div>
         </Panel>
       </div>
+    </div>
+  );
+}
 
-      <Panel title="Канбан доска" hint="Разложение задач по состояниям">
+function BoardScreen({ role, tasks, reviewQueue, onOpenProject, onOpenStage, onOpenDocument, onOpenRemark, onOpenReview }) {
+  const kanbanColumns = [
+    { key: 'todo', title: 'К выполнению' },
+    { key: 'progress', title: 'В работе' },
+    { key: 'review', title: 'На проверке' },
+    { key: 'done', title: 'Готово' },
+  ];
+
+  const kanbanItems = [
+    ...tasks.map((task) => ({
+      id: `task-${task.id}`,
+      lane: task.status === 'В работе' ? 'progress' : task.status === 'Ожидает' ? 'todo' : task.status === 'Просрочен' ? 'todo' : 'done',
+      title: task.type,
+      project: task.project,
+      subtitle: task.stage || task.document || 'Без уточнения',
+      detail: task.description,
+      status: task.status,
+      priority: task.priority,
+      deadline: task.deadline,
+      action: task.type.includes('Документ') ? 'review' : task.remarkId ? 'remark' : task.stageId ? 'stage' : 'project',
+      projectId: task.projectId,
+      stageId: task.stageId,
+      documentId: task.documentId,
+      remarkId: task.remarkId,
+    })),
+    ...reviewQueue.map((item) => ({
+      id: `review-${item.id}`,
+      lane: 'review',
+      title: item.name,
+      project: item.projectName,
+      subtitle: item.stageName,
+      detail: item.documentType,
+      status: item.status,
+      priority: item.remarksCount > 1 ? 'Высокий' : 'Средний',
+      deadline: item.sentAt,
+      action: 'review',
+      documentId: item.id === 1 ? 2 : item.id === 2 ? 3 : 4,
+    })),
+  ];
+
+  const openItem = (item) => {
+    if (item.action === 'review') {
+      onOpenReview?.();
+      return;
+    }
+
+    if (item.action === 'remark' && item.remarkId) {
+      onOpenRemark?.(item.remarkId);
+      return;
+    }
+
+    if (item.action === 'document' && item.documentId) {
+      onOpenDocument?.(item.documentId);
+      return;
+    }
+
+    if (item.action === 'stage' && item.stageId) {
+      onOpenStage?.(item.stageId);
+      return;
+    }
+
+    if (item.projectId) {
+      onOpenProject?.(item.projectId);
+    }
+  };
+
+  return (
+    <div className="screen-grid">
+      <div className="hero-card dashboard-hero">
+        <div>
+          <div className="eyebrow">Рабочая доска</div>
+          <h2>Канбан по задачам и проверкам</h2>
+          <p>Здесь видно, что в работе, что на проверке и что уже готово. Открывайте карточку прямо из доски.</p>
+        </div>
+        <div className="hero-cta-group">
+          {role !== 'EXECUTOR' && (
+            <button className="ghost-button" type="button" onClick={onOpenReview}>
+              Документы на проверке
+            </button>
+          )}
+        </div>
+      </div>
+
+      <Panel title="Канбан доска" hint="Открывайте нужный объект прямо из карточки">
         <div className="kanban-board">
           {kanbanColumns.map((column) => (
             <div key={column.key} className="kanban-column">
@@ -595,7 +685,7 @@ function DashboardScreen({ role, projects, tasks, reviewQueue, onOpenProject, on
                   .filter((item) => item.lane === column.key)
                   .slice(0, 4)
                   .map((item) => (
-                    <div key={item.id} className="kanban-card">
+                    <button key={item.id} type="button" className="kanban-card" onClick={() => openItem(item)}>
                       <div className="kanban-card-head">
                         <strong>{item.title}</strong>
                         <StatusPill value={item.status} />
@@ -607,7 +697,7 @@ function DashboardScreen({ role, projects, tasks, reviewQueue, onOpenProject, on
                         <span>{item.priority}</span>
                         <span>{formatDate(item.deadline)}</span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 {kanbanItems.filter((item) => item.lane === column.key).length === 0 && (
                   <div className="kanban-empty">Нет карточек</div>
@@ -1112,7 +1202,7 @@ function TasksScreen({ role, onOpenProject, onOpenStage, onOpenDocument, onOpenR
   );
 }
 
-function ReviewScreen({ role }) {
+function ReviewScreen({ role, onOpenDocument }) {
   const [search, setSearch] = useState('');
 
   const queue = filterDocumentsForReview(role).filter((item) => item.name.toLowerCase().includes(search.toLowerCase()) || item.projectName.toLowerCase().includes(search.toLowerCase()));
@@ -1131,8 +1221,19 @@ function ReviewScreen({ role }) {
 
       <Panel title="Документы на проверке" hint="Очередь проверяющего и руководителя проекта">
         <DataTable
-          columns={['Название', 'Проект', 'Этап', 'Тип', 'Версия', 'Автор', 'Дата отправки', 'Статус', 'Замечания']}
+          columns={['Открыть', 'Название', 'Проект', 'Этап', 'Тип', 'Версия', 'Автор', 'Дата отправки', 'Статус', 'Замечания']}
           rows={queue.map((item) => [
+            <button
+              key={`open-${item.id}`}
+              type="button"
+              className="task-open-button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenDocument?.(item.documentId, item.projectId, item.stageId);
+              }}
+            >
+              Открыть
+            </button>,
             item.name,
             item.projectName,
             item.stageName,
@@ -1143,6 +1244,10 @@ function ReviewScreen({ role }) {
             <StatusPill key={`${item.id}-status`} value={item.status} />,
             item.remarksCount,
           ])}
+          onRowClick={(rowIndex) => {
+            const item = queue[rowIndex];
+            onOpenDocument?.(item.documentId, item.projectId, item.stageId);
+          }}
           emptyText={emptyTextByScreen.review}
         />
       </Panel>

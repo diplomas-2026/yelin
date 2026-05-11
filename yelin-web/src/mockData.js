@@ -144,9 +144,9 @@ export const auditLog = [
 ];
 
 export const documentReviewQueue = [
-  { id: 1, name: 'План 1 этажа', projectName: 'Многоэтажный жилой дом', stageName: 'Проектная документация', documentType: 'Пояснительная записка', version: 2, uploadedBy: 'Сидоров Сергей Сергеевич', sentAt: '2026-05-12T15:10:00', status: 'На проверке', remarksCount: 2 },
-  { id: 2, name: 'Фасад главный', projectName: 'Административное здание', stageName: 'Эскизный проект', documentType: 'Фасад', version: 1, uploadedBy: 'Сидоров Сергей Сергеевич', sentAt: '2026-05-11T14:20:00', status: 'На проверке', remarksCount: 1 },
-  { id: 3, name: 'Архитектурные решения', projectName: 'Реконструкция общественного здания', stageName: 'Проектная документация', documentType: 'Архитектурные решения', version: 3, uploadedBy: 'Сидоров Сергей Сергеевич', sentAt: '2026-05-11T09:10:00', status: 'На повторной проверке', remarksCount: 2 },
+  { id: 1, projectId: 1, stageId: 3, documentId: 2, name: 'План 1 этажа', projectName: 'Многоэтажный жилой дом', stageName: 'Проектная документация', documentType: 'Пояснительная записка', version: 2, uploadedBy: 'Сидоров Сергей Сергеевич', sentAt: '2026-05-12T15:10:00', status: 'На проверке', remarksCount: 2 },
+  { id: 2, projectId: 2, stageId: 8, documentId: 3, name: 'Фасад главный', projectName: 'Административное здание', stageName: 'Эскизный проект', documentType: 'Фасад', version: 1, uploadedBy: 'Сидоров Сергей Сергеевич', sentAt: '2026-05-11T14:20:00', status: 'На проверке', remarksCount: 1 },
+  { id: 3, projectId: 3, stageId: 15, documentId: 4, name: 'Архитектурные решения', projectName: 'Реконструкция общественного здания', stageName: 'Проектная документация', documentType: 'Архитектурные решения', version: 3, uploadedBy: 'Сидоров Сергей Сергеевич', sentAt: '2026-05-11T09:10:00', status: 'На повторной проверке', remarksCount: 2 },
 ];
 
 export const taskBoard = {
@@ -182,14 +182,15 @@ export const roleLabels = {
 };
 
 export const roleMenu = {
-  ADMIN: ['dashboard', 'projects', 'tasks', 'review', 'remarks', 'notifications', 'users', 'audit'],
-  PROJECT_MANAGER: ['dashboard', 'projects', 'tasks', 'review', 'remarks', 'notifications', 'audit'],
-  EXECUTOR: ['dashboard', 'projects', 'tasks', 'remarks', 'notifications'],
-  REVIEWER: ['dashboard', 'projects', 'tasks', 'review', 'remarks', 'notifications'],
+  ADMIN: ['dashboard', 'board', 'projects', 'tasks', 'review', 'remarks', 'notifications', 'users', 'audit'],
+  PROJECT_MANAGER: ['dashboard', 'board', 'projects', 'tasks', 'review', 'remarks', 'notifications', 'audit'],
+  EXECUTOR: ['dashboard', 'board', 'projects', 'tasks', 'remarks', 'notifications'],
+  REVIEWER: ['dashboard', 'board', 'projects', 'tasks', 'review', 'remarks', 'notifications'],
 };
 
 export const menuLabels = {
   dashboard: 'Дашборд',
+  board: 'Канбан',
   projects: 'Проекты',
   tasks: 'Мои задачи',
   review: 'Документы на проверке',
