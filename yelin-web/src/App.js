@@ -31,12 +31,11 @@ import {
   roleMenu,
   remarkPriorities,
   remarkStatuses,
-  seedCredentials,
   statusTone,
   users,
 } from './mockData';
 
-const defaultLogin = { email: 'admin@max-arh.local', password: 'password' };
+const defaultLogin = { email: '', password: '' };
 
 const screenMeta = {
   dashboard: { title: 'Дашборд', subtitle: 'Общее состояние проектов и проблемных зон' },
@@ -114,9 +113,7 @@ function App() {
         error={loginError}
         onSubmit={() => {
           const account = users.find((user) => user.email === login.email);
-          const credentials = seedCredentials[login.email];
-
-          if (!account || !credentials || credentials.password !== login.password) {
+          if (!account || login.password !== 'password') {
             setLoginError('Неверный email или пароль.');
             return;
           }
@@ -354,7 +351,7 @@ function LoginScreen({ login, setLogin, error, onSubmit }) {
       <div className="login-card">
         <div className="login-badge">MAX-ARCH Control</div>
         <h1>Вход в систему</h1>
-        <p>Демо-доступы уже предзаполнены, можно сразу войти в разные роли.</p>
+        <p>Войдите в систему, чтобы продолжить работу с проектами и проверками.</p>
 
         <label className="field">
           <span>Email</span>
@@ -381,20 +378,6 @@ function LoginScreen({ login, setLogin, error, onSubmit }) {
         <button className="primary-button" type="button" onClick={onSubmit}>
           Войти
         </button>
-
-        <div className="credentials-grid">
-          {Object.entries(seedCredentials).map(([email, credential]) => (
-            <button
-              key={email}
-              type="button"
-              className="credential-card"
-              onClick={() => setLogin({ email, password: credential.password })}
-            >
-              <strong>{email}</strong>
-              <span>{roleLabels[credential.role]}</span>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );
