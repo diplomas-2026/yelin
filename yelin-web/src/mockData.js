@@ -289,7 +289,125 @@ export function getRemarkById(id) {
 }
 
 export function getTasksForRole(role) {
-  return taskBoard[role] ?? [];
+  if (role === 'EXECUTOR') {
+    return [
+      ...documents
+        .filter((document) => ['Есть замечания', 'Исправляется', 'На повторной проверке'].includes(document.status))
+        .slice(0, 3)
+        .map((document, index) => ({
+          id: 100 + index,
+          type: 'Документ',
+          projectId: document.projectId,
+          stageId: document.stageId,
+          project: (projects.find((project) => project.id === document.projectId) || {}).name || 'Проект',
+          stage: document.stageName,
+          documentId: document.id,
+          document: document.name,
+          remarkId: null,
+          description: 'Исправить и отправить документ на повторную проверку',
+          priority: document.status === 'Есть замечания' ? 'Высокий' : 'Средний',
+          deadline: document.uploadedAt ? String(document.uploadedAt).slice(0, 10) : '2026-05-20',
+          status: document.status === 'Исправляется' ? 'В работе' : 'Ожидает',
+        })),
+      ...remarks
+        .filter((remark) => remark.responsible)
+        .slice(0, 2)
+        .map((remark, index) => ({
+          id: 200 + index,
+          type: 'Замечание',
+          projectId: remark.projectId,
+          stageId: remark.stageId,
+          project: (projects.find((project) => project.id === remark.projectId) || {}).name || 'Проект',
+          stage: remark.stageName,
+          documentId: remark.documentId,
+          document: remark.documentName,
+          remarkId: remark.id,
+          description: remark.text,
+          priority: remark.priority,
+          deadline: remark.fixDeadline,
+          status: remark.status === 'Закрыто' ? 'Готово' : 'В работе',
+        })),
+    ];
+  }
+
+  if (role === 'REVIEWER') {
+    return [
+      ...documentReviewQueue.map((item, index) => ({
+        id: 300 + index,
+        type: 'Документ на проверке',
+        projectId: item.projectId,
+        stageId: item.stageId,
+        project: item.projectName,
+        stage: item.stageName,
+        documentId: item.documentId,
+        document: item.name,
+        remarkId: null,
+        description: 'Проверить документ и при необходимости создать замечание',
+        priority: item.remarksCount > 1 ? 'Высокий' : 'Средний',
+        deadline: item.sentAt.slice(0, 10),
+        status: item.status,
+      })),
+      ...remarks
+        .filter((remark) => remark.status === 'На повторной проверке')
+        .map((remark, index) => ({
+          id: 400 + index,
+          type: 'Замечание на повторной проверке',
+          projectId: remark.projectId,
+          stageId: remark.stageId,
+          project: (projects.find((project) => project.id === remark.projectId) || {}).name || 'Проект',
+          stage: remark.stageName,
+          documentId: remark.documentId,
+          document: remark.documentName,
+          remarkId: remark.id,
+          description: 'Повторно проверить исправления',
+          priority: remark.priority,
+          deadline: remark.fixDeadline,
+          status: remark.status,
+        })),
+    ];
+  }
+
+  if (role === 'PROJECT_MANAGER') {
+    return [
+      ...projects
+        .filter((project) => project.status === 'Просрочен')
+        .map((project, index) => ({
+          id: 500 + index,
+          type: 'Просроченный проект',
+          projectId: project.id,
+          stageId: null,
+          project: project.name,
+          stage: project.currentStage,
+          documentId: null,
+          document: '',
+          remarkId: null,
+          description: 'Проект требует вмешательства',
+          priority: 'Критический',
+          deadline: project.plannedFinishDate,
+          status: 'Просрочен',
+        })),
+      ...remarks
+        .filter((remark) => remark.priority === 'Критический' || remark.status === 'Открыто')
+        .slice(0, 2)
+        .map((remark, index) => ({
+          id: 600 + index,
+          type: 'Критическое замечание',
+          projectId: remark.projectId,
+          stageId: remark.stageId,
+          project: (projects.find((project) => project.id === remark.projectId) || {}).name || 'Проект',
+          stage: remark.stageName,
+          documentId: remark.documentId,
+          document: remark.documentName,
+          remarkId: remark.id,
+          description: remark.text,
+          priority: remark.priority,
+          deadline: remark.fixDeadline,
+          status: remark.status,
+        })),
+    ];
+  }
+
+  return [];
 }
 
 export function filterProjectsForRole(role, userEmail) {
@@ -325,4 +443,25 @@ export function countRemarksByStatus(status) {
 
 export function countProjectsByStatus(status) {
   return projects.filter((project) => project.status === status).length;
+}
+
+function replaceArray(target, next) {
+  target.splice(0, target.length, ...next);
+}
+
+export function setAppSnapshot(snapshot = {}) {
+  if (snapshot.users) replaceArray(users, snapshot.users);
+  if (snapshot.projects) replaceArray(projects, snapshot.projects);
+  if (snapshot.projectMembers) replaceArray(projectMembers, snapshot.projectMembers);
+  if (snapshot.stages) replaceArray(stages, snapshot.stages);
+  if (snapshot.documents) replaceArray(documents, snapshot.documents);
+  if (snapshot.versions) replaceArray(versions, snapshot.versions);
+  if (snapshot.remarks) replaceArray(remarks, snapshot.remarks);
+  if (snapshot.notifications) replaceArray(notifications, snapshot.notifications);
+  if (snapshot.auditLog) replaceArray(auditLog, snapshot.auditLog);
+  if (snapshot.documentReviewQueue) replaceArray(documentReviewQueue, snapshot.documentReviewQueue);
+  if (snapshot.seedCredentials) {
+    Object.keys(seedCredentials).forEach((key) => delete seedCredentials[key]);
+    Object.assign(seedCredentials, snapshot.seedCredentials);
+  }
 }

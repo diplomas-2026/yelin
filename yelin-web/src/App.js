@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import {
+  approveDocument as apiApproveDocument,
+  createDocumentRemark as apiCreateDocumentRemark,
+  login as apiLogin,
+  loadWorkspace,
+  markAllNotificationsRead as apiMarkAllNotificationsRead,
+  returnDocument as apiReturnDocument,
+  sendDocumentToReview as apiSendDocumentToReview,
+  setNotificationRead as apiSetNotificationRead,
+  uploadDocumentVersion as apiUploadDocumentVersion,
+} from './api';
+import {
   auditLog,
   daysLeft,
   documents,
@@ -31,6 +42,7 @@ import {
   roleMenu,
   remarkPriorities,
   remarkStatuses,
+  setAppSnapshot,
   statusTone,
   users,
 } from './mockData';
@@ -72,6 +84,30 @@ function App() {
   const [selectedRemarkId, setSelectedRemarkId] = useState(1);
   const [notificationsState, setNotificationsState] = useState(seedNotifications);
 
+  const applyWorkspace = async () => {
+    const workspace = await loadWorkspace();
+    const mergedProjectMembers = workspace.projectDetails.flatMap((detail) => detail.members || []);
+    const mergedStages = workspace.projectDetails.flatMap((detail) => detail.stages || []);
+    const mergedDocuments = workspace.projectDetails.flatMap((detail) => detail.documents || []);
+    const mergedVersions = workspace.versions || [];
+    const mergedNotifications = workspace.notifications || [];
+
+    setAppSnapshot({
+      users: workspace.users,
+      projects: workspace.projects,
+      remarks: workspace.remarks,
+      notifications: mergedNotifications,
+      auditLog: workspace.auditLog,
+      documentReviewQueue: workspace.documentReviewQueue,
+      projectMembers: mergedProjectMembers,
+      stages: mergedStages,
+      documents: mergedDocuments,
+      versions: mergedVersions,
+    });
+    setNotificationsState(mergedNotifications);
+    return workspace;
+  };
+
   const accessibleProjects = useMemo(() => {
     if (!session) return [];
     return filterProjectsForRole(session.role, session.email);
@@ -112,20 +148,20 @@ function App() {
         login={login}
         setLogin={setLogin}
         error={loginError}
-        onSubmit={() => {
-          const account = users.find((user) => user.email === login.email);
-          if (!account || login.password !== 'password') {
-            setLoginError('Неверный email или пароль.');
-            return;
+        onSubmit={async () => {
+          try {
+            setLoginError('');
+            const account = await apiLogin(login.email, login.password);
+            await applyWorkspace();
+            setSession(account);
+            setActiveScreen('dashboard');
+            setSelectedProjectId(1);
+            setSelectedStageId(3);
+            setSelectedDocumentId(2);
+            setSelectedRemarkId(1);
+          } catch (error) {
+            setLoginError(error.message || 'Неверный email или пароль.');
           }
-
-          setSession(account);
-          setActiveScreen('dashboard');
-          setSelectedProjectId(1);
-          setSelectedStageId(3);
-          setSelectedDocumentId(2);
-          setSelectedRemarkId(1);
-          setLoginError('');
         }}
       />
     );
@@ -307,6 +343,32 @@ function App() {
                 setSelectedRemarkId(remarkId);
                 setActiveScreen('remarks');
               }}
+              actor={session}
+              onApproveDocument={async (documentId, payload) => {
+                const response = await apiApproveDocument(documentId, payload);
+                await applyWorkspace();
+                return response;
+              }}
+              onReturnDocument={async (documentId, payload) => {
+                const response = await apiReturnDocument(documentId, payload);
+                await applyWorkspace();
+                return response;
+              }}
+              onCreateRemark={async (documentId, payload) => {
+                const response = await apiCreateDocumentRemark(documentId, payload);
+                await applyWorkspace();
+                return response;
+              }}
+              onUploadVersion={async (documentId, payload) => {
+                const response = await apiUploadDocumentVersion(documentId, payload);
+                await applyWorkspace();
+                return response;
+              }}
+              onSendToReview={async (documentId, payload) => {
+                const response = await apiSendDocumentToReview(documentId, payload);
+                await applyWorkspace();
+                return response;
+              }}
             />
           )}
 
@@ -365,17 +427,21 @@ function App() {
           {screen === 'notifications' && (
             <NotificationsScreen
               notifications={roleNotifications}
-              onToggleRead={(id) => {
-                setNotificationsState((current) =>
-                  current.map((notification) => (notification.id === id ? { ...notification, read: !notification.read } : notification)),
-                );
+              onToggleRead={async (id, read) => {
+                try {
+                  await apiSetNotificationRead(id, read);
+                  await applyWorkspace();
+                } catch (error) {
+                  console.error(error);
+                }
               }}
-              onMarkAllRead={() => {
-                setNotificationsState((current) =>
-                  current.map((notification) =>
-                    notification.userEmail === session.email ? { ...notification, read: true } : notification,
-                  ),
-                );
+              onMarkAllRead={async () => {
+                try {
+                  await apiMarkAllNotificationsRead(session.email);
+                  await applyWorkspace();
+                } catch (error) {
+                  console.error(error);
+                }
               }}
               onOpenObject={(link) => {
                 const projectMatch = link.match(/projects\/(\d+)/);
@@ -747,7 +813,7 @@ function ProjectsScreen({ role, projects, onOpenProject }) {
             </option>
           ))}
         </select>
-        <button className="primary-button" type="button" disabled={!['ADMIN', 'PROJECT_MANAGER'].includes(role)}>
+        <button className="primary-button" type="button" disabled title="Создание проекта будет подключено следующим шагом">
           Создать проект
         </button>
       </div>
@@ -897,13 +963,13 @@ function StageScreen({ project, stage, documents, remarks, history, onOpenDocume
         <button className="ghost-button" type="button" onClick={onOpenProject}>
           Назад к проекту
         </button>
-        <button className="primary-button" type="button">
+        <button className="primary-button" type="button" disabled title="Скоро будет подключено к API">
           Загрузить документ
         </button>
-        <button className="ghost-button" type="button">
+        <button className="ghost-button" type="button" disabled title="Скоро будет подключено к API">
           Отправить этап на проверку
         </button>
-        <button className="ghost-button" type="button">
+        <button className="ghost-button" type="button" disabled title="Скоро будет подключено к API">
           Принять этап
         </button>
       </div>
@@ -953,76 +1019,102 @@ function StageScreen({ project, stage, documents, remarks, history, onOpenDocume
   );
 }
 
-function DocumentScreen({ role, project, stage, document, versions, remarks, onOpenRemark }) {
-  const [localDocument, setLocalDocument] = useState(document);
-  const [localRemarks, setLocalRemarks] = useState(remarks);
+function DocumentScreen({
+  role,
+  project,
+  stage,
+  document,
+  versions,
+  remarks,
+  actor,
+  onOpenRemark,
+  onApproveDocument,
+  onReturnDocument,
+  onCreateRemark,
+  onUploadVersion,
+  onSendToReview,
+}) {
   const [note, setNote] = useState('');
 
   useEffect(() => {
-    setLocalDocument(document);
-    setLocalRemarks(remarks);
     setNote('');
-  }, [document, remarks]);
+  }, [document.id]);
 
-  const openRemarksCount = localRemarks.filter((remark) => ['Открыто', 'В работе', 'На повторной проверке'].includes(remark.status)).length;
+  const openRemarksCount = remarks.filter((remark) => ['Открыто', 'В работе', 'На повторной проверке'].includes(remark.status)).length;
   const canApprove = openRemarksCount === 0;
 
-  const addRemark = () => {
+  const addRemark = async () => {
     const text = window.prompt('Введите текст замечания');
     if (!text) {
       return;
     }
 
-    const newRemark = {
-      id: Date.now(),
-      text,
-      author: 'Кузнецова Анна Андреевна',
-      responsible: document.uploadedBy,
-      priority: 'Средний',
-      status: 'Открыто',
-      fixDeadline: new Date().toISOString().slice(0, 10),
-      executorComment: '',
-    };
-
-    setLocalRemarks((current) => [newRemark, ...current]);
-    setLocalDocument((current) => ({ ...current, status: 'Есть замечания' }));
-    setNote('Замечание добавлено. Документ переведен в статус «Есть замечания».');
+    try {
+      const result = await onCreateRemark(document.id, {
+        text,
+        priority: 'Средний',
+        actorName: actor.fullName,
+        actorEmail: actor.email,
+      });
+      setNote(result?.message || 'Замечание добавлено. Документ переведен в статус «Есть замечания».');
+    } catch (error) {
+      setNote(error.message || 'Не удалось создать замечание.');
+    }
   };
 
-  const approveDocument = () => {
+  const approveDocument = async () => {
     if (!canApprove) {
       setNote('Сначала закройте все замечания, затем можно принимать документ.');
       return;
     }
 
-    setLocalDocument((current) => ({ ...current, status: 'Принят' }));
-    setNote('Документ принят.');
-  };
-
-  const returnToRevision = () => {
-    setLocalDocument((current) => ({ ...current, status: 'Есть замечания' }));
-    setNote('Документ возвращен на доработку.');
-  };
-
-  const uploadNewVersion = () => {
-    setLocalDocument((current) => ({
-      ...current,
-      currentVersion: current.currentVersion + 1,
-      status: 'Исправляется',
-      uploadedAt: new Date().toISOString(),
-    }));
-    setNote('Новая версия подготовлена. Статус обновлен на «Исправляется».');
-  };
-
-  const sendToReview = () => {
-    if (openRemarksCount > 0) {
-      setLocalDocument((current) => ({ ...current, status: 'На проверке' }));
-      setNote('Документ отправлен на повторную проверку.');
-      return;
+    try {
+      const result = await onApproveDocument(document.id, {
+        actorName: actor.fullName,
+        actorEmail: actor.email,
+      });
+      setNote(result?.message || 'Документ принят.');
+    } catch (error) {
+      setNote(error.message || 'Не удалось принять документ.');
     }
+  };
 
-    setLocalDocument((current) => ({ ...current, status: 'На проверке' }));
-    setNote('Документ отправлен на проверку.');
+  const returnToRevision = async () => {
+    try {
+      const result = await onReturnDocument(document.id, {
+        actorName: actor.fullName,
+        actorEmail: actor.email,
+      });
+      setNote(result?.message || 'Документ возвращен на доработку.');
+    } catch (error) {
+      setNote(error.message || 'Не удалось вернуть документ.');
+    }
+  };
+
+  const uploadNewVersion = async () => {
+    const comment = window.prompt('Комментарий к новой версии', document.comment || 'Исправление замечаний');
+    try {
+      const result = await onUploadVersion(document.id, {
+        comment: comment || document.comment || 'Исправление замечаний',
+        actorName: actor.fullName,
+        actorEmail: actor.email,
+      });
+      setNote(result?.message || 'Новая версия загружена.');
+    } catch (error) {
+      setNote(error.message || 'Не удалось загрузить версию.');
+    }
+  };
+
+  const sendToReview = async () => {
+    try {
+      const result = await onSendToReview(document.id, {
+        actorName: actor.fullName,
+        actorEmail: actor.email,
+      });
+      setNote(result?.message || 'Документ отправлен на проверку.');
+    } catch (error) {
+      setNote(error.message || 'Не удалось отправить документ на проверку.');
+    }
   };
 
   return (
@@ -1030,16 +1122,16 @@ function DocumentScreen({ role, project, stage, document, versions, remarks, onO
       <div className="hero-card">
         <div>
           <div className="eyebrow">{project.name}</div>
-          <h2>{localDocument.name}</h2>
+          <h2>{document.name}</h2>
           <p>
             Этап: {stage.name}. Тип документа: {document.type}.
           </p>
         </div>
         <div className="hero-metrics">
-          <Metric label="Статус" value={<StatusPill value={localDocument.status} />} />
-          <Metric label="Версия" value={`v${localDocument.currentVersion}`} />
-          <Metric label="Автор" value={localDocument.uploadedBy} />
-          <Metric label="Дата загрузки" value={formatDateTime(localDocument.uploadedAt)} />
+          <Metric label="Статус" value={<StatusPill value={document.status} />} />
+          <Metric label="Версия" value={`v${document.currentVersion}`} />
+          <Metric label="Автор" value={document.uploadedBy} />
+          <Metric label="Дата загрузки" value={formatDateTime(document.uploadedAt)} />
         </div>
       </div>
 
@@ -1083,12 +1175,12 @@ function DocumentScreen({ role, project, stage, document, versions, remarks, onO
       <div className="dual-grid">
         <Panel title="Файл" hint="Информация о прикрепленном файле">
           <div className="file-card">
-            <div className="file-name">{localDocument.fileName || `${localDocument.name}.pdf`}</div>
+            <div className="file-name">{document.fileName || `${document.name}.pdf`}</div>
             <div className="file-meta">
-              <span>{localDocument.extension}</span>
-              <span>{(localDocument.size / 1024 / 1024).toFixed(1)} МБ</span>
+              <span>{document.extension}</span>
+              <span>{(document.size / 1024 / 1024).toFixed(1)} МБ</span>
             </div>
-            <div className="file-comment">{localDocument.comment}</div>
+            <div className="file-comment">{document.comment}</div>
           </div>
         </Panel>
 
@@ -1109,7 +1201,7 @@ function DocumentScreen({ role, project, stage, document, versions, remarks, onO
       <Panel title="Замечания" hint="Все замечания по документу">
         <DataTable
           columns={['Текст', 'Автор', 'Ответственный', 'Приоритет', 'Статус', 'Срок', 'Комментарий']}
-          rows={localRemarks.map((remark) => [
+          rows={remarks.map((remark) => [
             remark.text,
             remark.author,
             remark.responsible,
@@ -1118,7 +1210,7 @@ function DocumentScreen({ role, project, stage, document, versions, remarks, onO
             formatDate(remark.fixDeadline),
             remark.executorComment || '—',
           ])}
-          onRowClick={(rowIndex) => onOpenRemark(localRemarks[rowIndex].id)}
+          onRowClick={(rowIndex) => onOpenRemark(remarks[rowIndex].id)}
         />
       </Panel>
     </div>
@@ -1371,8 +1463,8 @@ function NotificationsScreen({ notifications, onToggleRead, onMarkAllRead, onOpe
                 key={notification.id}
                 type="button"
                 className={`notification-item ${notification.read ? 'read' : 'unread'}`}
-                onClick={() => {
-                  onToggleRead(notification.id);
+                onClick={async () => {
+                  await onToggleRead(notification.id, !notification.read);
                   onOpenObject(notification.objectLink);
                 }}
               >
@@ -1419,7 +1511,7 @@ function UsersScreen() {
           <option value="Активные">Активные</option>
           <option value="Неактивные">Неактивные</option>
         </select>
-        <button className="primary-button" type="button">
+        <button className="primary-button" type="button" disabled title="Создание пользователей будет подключено следующим шагом">
           Создать пользователя
         </button>
       </div>
