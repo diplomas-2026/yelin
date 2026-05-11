@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import {
   auditLog,
@@ -297,6 +297,7 @@ function App() {
 
           {screen === 'document' && currentDocument && currentProject && currentStage && (
             <DocumentScreen
+              role={session.role}
               project={currentProject}
               stage={currentStage}
               document={currentDocument}
@@ -952,49 +953,142 @@ function StageScreen({ project, stage, documents, remarks, history, onOpenDocume
   );
 }
 
-function DocumentScreen({ project, stage, document, versions, remarks, onOpenRemark }) {
+function DocumentScreen({ role, project, stage, document, versions, remarks, onOpenRemark }) {
+  const [localDocument, setLocalDocument] = useState(document);
+  const [localRemarks, setLocalRemarks] = useState(remarks);
+  const [note, setNote] = useState('');
+
+  useEffect(() => {
+    setLocalDocument(document);
+    setLocalRemarks(remarks);
+    setNote('');
+  }, [document, remarks]);
+
+  const openRemarksCount = localRemarks.filter((remark) => ['Открыто', 'В работе', 'На повторной проверке'].includes(remark.status)).length;
+  const canApprove = openRemarksCount === 0;
+
+  const addRemark = () => {
+    const text = window.prompt('Введите текст замечания');
+    if (!text) {
+      return;
+    }
+
+    const newRemark = {
+      id: Date.now(),
+      text,
+      author: 'Кузнецова Анна Андреевна',
+      responsible: document.uploadedBy,
+      priority: 'Средний',
+      status: 'Открыто',
+      fixDeadline: new Date().toISOString().slice(0, 10),
+      executorComment: '',
+    };
+
+    setLocalRemarks((current) => [newRemark, ...current]);
+    setLocalDocument((current) => ({ ...current, status: 'Есть замечания' }));
+    setNote('Замечание добавлено. Документ переведен в статус «Есть замечания».');
+  };
+
+  const approveDocument = () => {
+    if (!canApprove) {
+      setNote('Сначала закройте все замечания, затем можно принимать документ.');
+      return;
+    }
+
+    setLocalDocument((current) => ({ ...current, status: 'Принят' }));
+    setNote('Документ принят.');
+  };
+
+  const returnToRevision = () => {
+    setLocalDocument((current) => ({ ...current, status: 'Есть замечания' }));
+    setNote('Документ возвращен на доработку.');
+  };
+
+  const uploadNewVersion = () => {
+    setLocalDocument((current) => ({
+      ...current,
+      currentVersion: current.currentVersion + 1,
+      status: 'Исправляется',
+      uploadedAt: new Date().toISOString(),
+    }));
+    setNote('Новая версия подготовлена. Статус обновлен на «Исправляется».');
+  };
+
+  const sendToReview = () => {
+    if (openRemarksCount > 0) {
+      setLocalDocument((current) => ({ ...current, status: 'На проверке' }));
+      setNote('Документ отправлен на повторную проверку.');
+      return;
+    }
+
+    setLocalDocument((current) => ({ ...current, status: 'На проверке' }));
+    setNote('Документ отправлен на проверку.');
+  };
+
   return (
     <div className="screen-grid">
       <div className="hero-card">
         <div>
           <div className="eyebrow">{project.name}</div>
-          <h2>{document.name}</h2>
+          <h2>{localDocument.name}</h2>
           <p>
             Этап: {stage.name}. Тип документа: {document.type}.
           </p>
         </div>
         <div className="hero-metrics">
-          <Metric label="Статус" value={<StatusPill value={document.status} />} />
-          <Metric label="Версия" value={`v${document.currentVersion}`} />
-          <Metric label="Автор" value={document.uploadedBy} />
-          <Metric label="Дата загрузки" value={formatDateTime(document.uploadedAt)} />
+          <Metric label="Статус" value={<StatusPill value={localDocument.status} />} />
+          <Metric label="Версия" value={`v${localDocument.currentVersion}`} />
+          <Metric label="Автор" value={localDocument.uploadedBy} />
+          <Metric label="Дата загрузки" value={formatDateTime(localDocument.uploadedAt)} />
         </div>
       </div>
 
-      <div className="panel-actions">
-        <button className="primary-button" type="button">
-          Скачать
-        </button>
-        <button className="ghost-button" type="button">
-          Открыть / Просмотреть
-        </button>
-        <button className="ghost-button" type="button">
-          Загрузить новую версию
-        </button>
-        <button className="ghost-button" type="button">
-          Отправить на проверку
-        </button>
+      <div className="panel">
+        <div className="panel-header">
+          <h2>Что можно сделать</h2>
+          <span className="panel-hint">{roleLabels[role]}</span>
+        </div>
+        <div className="panel-actions">
+          {role === 'REVIEWER' ? (
+            <>
+              <button className="primary-button" type="button" onClick={approveDocument}>
+                Принять документ
+              </button>
+              <button className="ghost-button" type="button" onClick={returnToRevision}>
+                Вернуть на доработку
+              </button>
+              <button className="ghost-button" type="button" onClick={addRemark}>
+                Создать замечание
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="primary-button" type="button" onClick={uploadNewVersion}>
+                Загрузить новую версию
+              </button>
+              <button className="ghost-button" type="button" onClick={sendToReview}>
+                Отправить на проверку
+              </button>
+            </>
+          )}
+        </div>
+        <div className="muted" style={{ marginTop: 12 }}>
+          {role === 'REVIEWER'
+            ? 'Если документ готов, нажмите «Принять документ». Если есть вопросы, создайте замечание или верните на доработку.'
+            : 'Загрузите новую версию или отправьте документ на проверку.'}
+        </div>
+        {note && <div className="action-note">{note}</div>}
       </div>
 
       <div className="dual-grid">
         <Panel title="Файл" hint="Информация о прикрепленном файле">
           <div className="file-card">
-            <div className="file-name">{document.fileName || `${document.name}.pdf`}</div>
+            <div className="file-name">{localDocument.fileName || `${localDocument.name}.pdf`}</div>
             <div className="file-meta">
-              <span>{document.extension}</span>
-              <span>{(document.size / 1024 / 1024).toFixed(1)} МБ</span>
+              <span>{localDocument.extension}</span>
+              <span>{(localDocument.size / 1024 / 1024).toFixed(1)} МБ</span>
             </div>
-            <div className="file-comment">{document.comment}</div>
+            <div className="file-comment">{localDocument.comment}</div>
           </div>
         </Panel>
 
@@ -1015,7 +1109,7 @@ function DocumentScreen({ project, stage, document, versions, remarks, onOpenRem
       <Panel title="Замечания" hint="Все замечания по документу">
         <DataTable
           columns={['Текст', 'Автор', 'Ответственный', 'Приоритет', 'Статус', 'Срок', 'Комментарий']}
-          rows={remarks.map((remark) => [
+          rows={localRemarks.map((remark) => [
             remark.text,
             remark.author,
             remark.responsible,
@@ -1024,7 +1118,7 @@ function DocumentScreen({ project, stage, document, versions, remarks, onOpenRem
             formatDate(remark.fixDeadline),
             remark.executorComment || '—',
           ])}
-          onRowClick={(rowIndex) => onOpenRemark(remarks[rowIndex].id)}
+          onRowClick={(rowIndex) => onOpenRemark(localRemarks[rowIndex].id)}
         />
       </Panel>
     </div>
