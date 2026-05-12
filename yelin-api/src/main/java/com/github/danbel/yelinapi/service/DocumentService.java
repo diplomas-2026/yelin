@@ -1,9 +1,9 @@
 package com.github.danbel.yelinapi.service;
 
 import com.github.danbel.yelinapi.dto.DocumentDtos.DocumentResponse;
-import com.github.danbel.yelinapi.model.Document;
 import com.github.danbel.yelinapi.model.User;
 import com.github.danbel.yelinapi.repository.DocumentRepository;
+import com.github.danbel.yelinapi.repository.DocumentRow;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,7 +24,7 @@ public class DocumentService {
     }
 
     public List<DocumentResponse> findAll(Long projectId) {
-        List<Document> documents = projectId == null ? documentRepository.findAll() : documentRepository.findByProjectId(projectId);
+        List<DocumentRow> documents = projectId == null ? documentRepository.findAll() : documentRepository.findByProjectId(projectId);
         return documents.stream().map(this::toResponse).toList();
     }
 
@@ -48,7 +48,7 @@ public class DocumentService {
     }
 
     public DocumentResponse update(Long id, Long projectId, MultipartFile file, String comment, User user) {
-        Document current = documentRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Документ не найден"));
+        DocumentRow current = documentRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Документ не найден"));
         UploadedFile uploadedFile = file != null && !file.isEmpty() ? toUploadedFile(file) : null;
         documentRepository.update(
                 id,
@@ -65,7 +65,7 @@ public class DocumentService {
     }
 
     public DownloadedDocument download(Long id) {
-        Document document = documentRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Документ не найден"));
+        DocumentRow document = documentRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Документ не найден"));
         byte[] content = document.fileContent();
         if (content == null || content.length == 0) {
             content = ("Документ: " + document.name()).getBytes();
@@ -105,7 +105,7 @@ public class DocumentService {
 
     private record UploadedFile(String name, String type, String fileName, String mimeType, byte[] content) {}
 
-    private DocumentResponse toResponse(Document document) {
+    private DocumentResponse toResponse(DocumentRow document) {
         var project = projectService.getProject(document.projectId());
         var uploader = userService.getUser(document.uploadedBy());
         return new DocumentResponse(

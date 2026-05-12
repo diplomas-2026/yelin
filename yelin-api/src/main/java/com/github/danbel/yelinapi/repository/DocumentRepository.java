@@ -1,7 +1,6 @@
 package com.github.danbel.yelinapi.repository;
 
 import com.github.danbel.yelinapi.dto.DashboardDtos.ChartItem;
-import com.github.danbel.yelinapi.model.Document;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -16,19 +15,19 @@ public class DocumentRepository {
         this.jdbc = jdbc;
     }
 
-    public List<Document> findAll() {
-        return jdbc.sql("SELECT * FROM documents ORDER BY id").query(Document.class).list();
+    public List<DocumentRow> findAll() {
+        return jdbc.sql("SELECT * FROM documents ORDER BY id").query(DocumentRow.class).list();
     }
 
-    public List<Document> findByProjectId(Long projectId) {
+    public List<DocumentRow> findByProjectId(Long projectId) {
         return jdbc.sql("SELECT * FROM documents WHERE project_id = :projectId ORDER BY id")
                 .param("projectId", projectId)
-                .query(Document.class)
+                .query(DocumentRow.class)
                 .list();
     }
 
-    public Optional<Document> findById(Long id) {
-        return jdbc.sql("SELECT * FROM documents WHERE id = :id").param("id", id).query(Document.class).optional();
+    public Optional<DocumentRow> findById(Long id) {
+        return jdbc.sql("SELECT * FROM documents WHERE id = :id").param("id", id).query(DocumentRow.class).optional();
     }
 
     public Long create(Long projectId, String name, String type, String fileName, String mimeType, byte[] fileContent, Long uploadedBy, String comment) {
@@ -90,10 +89,10 @@ public class DocumentRepository {
                 .list();
     }
 
-    public Optional<Document> findLastByProjectId(Long projectId) {
+    public Optional<DocumentRow> findLastByProjectId(Long projectId) {
         return jdbc.sql("SELECT * FROM documents WHERE project_id = :projectId ORDER BY id DESC LIMIT 1")
                 .param("projectId", projectId)
-                .query(Document.class)
+                .query(DocumentRow.class)
                 .optional();
     }
 }
