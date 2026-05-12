@@ -21,6 +21,7 @@ public class DocumentDtos {
             String name,
             String type,
             String fileName,
+            String mimeType,
             Integer version,
             String status,
             Long uploadedBy,

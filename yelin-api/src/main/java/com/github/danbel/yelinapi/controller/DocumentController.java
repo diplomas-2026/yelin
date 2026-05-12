@@ -1,6 +1,5 @@
 package com.github.danbel.yelinapi.controller;
 
-import com.github.danbel.yelinapi.dto.DocumentDtos.DocumentRequest;
 import com.github.danbel.yelinapi.dto.DocumentDtos.DocumentResponse;
 import com.github.danbel.yelinapi.service.DocumentService;
 import com.github.danbel.yelinapi.service.UserService;
@@ -9,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -32,21 +32,32 @@ public class DocumentController extends CurrentUserSupport {
         return documentService.findById(id);
     }
 
-    @PostMapping
-    public DocumentResponse create(@RequestBody DocumentRequest request, Authentication authentication) {
-        return documentService.create(request, currentUser(authentication));
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public DocumentResponse create(
+            @RequestParam Long projectId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "comment", required = false) String comment,
+            Authentication authentication
+    ) {
+        return documentService.create(projectId, file, comment, currentUser(authentication));
     }
 
-    @PutMapping("/{id}")
-    public DocumentResponse update(@PathVariable Long id, @RequestBody DocumentRequest request, Authentication authentication) {
-        return documentService.update(id, request, currentUser(authentication));
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public DocumentResponse update(
+            @PathVariable Long id,
+            @RequestParam Long projectId,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "comment", required = false) String comment,
+            Authentication authentication
+    ) {
+        return documentService.update(id, projectId, file, comment, currentUser(authentication));
     }
 
     @GetMapping("/{id}/download")
     public ResponseEntity<byte[]> download(@PathVariable Long id) {
         var document = documentService.download(id);
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentType(MediaType.parseMediaType(document.mimeType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.fileName() + "\"")
                 .body(document.content());
     }

@@ -12,9 +12,10 @@ export function setAuthToken(token) {
 }
 
 async function request(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...(options.headers || {}),
     },
@@ -73,8 +74,8 @@ export const api = {
 
   documents: (projectId) => request(`/documents${projectId ? `?projectId=${projectId}` : ''}`),
   document: (id) => request(`/documents/${id}`),
-  createDocument: (payload) => request('/documents', { method: 'POST', body: JSON.stringify(payload) }),
-  updateDocument: (id, payload) => request(`/documents/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  createDocument: (formData) => request('/documents', { method: 'POST', body: formData }),
+  updateDocument: (id, formData) => request(`/documents/${id}`, { method: 'PUT', body: formData }),
   deleteDocument: (id) => request(`/documents/${id}`, { method: 'DELETE' }),
   downloadDocument: (id) => download(`/documents/${id}/download`),
 

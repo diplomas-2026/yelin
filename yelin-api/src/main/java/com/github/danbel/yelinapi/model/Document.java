@@ -8,6 +8,8 @@ public record Document(
         String name,
         String type,
         String fileName,
+        String mimeType,
+        byte[] fileContent,
         Integer version,
         String status,
         Long uploadedBy,
