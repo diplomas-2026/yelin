@@ -7,9 +7,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import { api } from '../api';
 import DataTable from '../components/DataTable';
 import StatusChip from '../components/StatusChip';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [projects, setProjects] = useState([]);
 
   async function load() {
@@ -33,7 +35,11 @@ export default function ProjectsPage() {
           <Typography variant="h4">Проекты</Typography>
           <Typography color="text.secondary">Нажмите на строку, чтобы открыть карточку проекта</Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/projects/new')}>Создать проект</Button>
+        {(currentUser?.role === 'ADMIN' || currentUser?.role === 'PROJECT_MANAGER') && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/projects/new')}>
+            Создать проект
+          </Button>
+        )}
       </Box>
       <DataTable
         title="Реестр проектов"

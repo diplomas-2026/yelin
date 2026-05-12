@@ -8,10 +8,12 @@ import { api, roleLabels } from '../api';
 import DataTable from '../components/DataTable';
 import ProjectChat from '../components/ProjectChat';
 import StatusChip from '../components/StatusChip';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProjectDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [project, setProject] = useState(null);
   const [documents, setDocuments] = useState([]);
 
@@ -43,7 +45,11 @@ export default function ProjectDetailsPage() {
           <Typography color="text.secondary">{project.customer}</Typography>
         </Box>
         <StatusChip status={project.status} />
-        <Button variant="outlined" startIcon={<EditIcon />} onClick={() => navigate(`/projects/${id}/edit`)}>Редактировать</Button>
+        {(currentUser?.role === 'ADMIN' || currentUser?.id === project.managerId) && (
+          <Button variant="outlined" startIcon={<EditIcon />} onClick={() => navigate(`/projects/${id}/edit`)}>
+            Редактировать
+          </Button>
+        )}
       </Box>
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Typography variant="h6">Информация</Typography>

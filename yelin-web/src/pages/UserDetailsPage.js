@@ -5,10 +5,12 @@ import EditIcon from '@mui/icons-material/Edit';
 import { api, roleLabels } from '../api';
 import DataTable from '../components/DataTable';
 import StatusChip from '../components/StatusChip';
+import { useAuth } from '../context/AuthContext';
 
 export default function UserDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [user, setUser] = useState(null);
   const [projects, setProjects] = useState([]);
 
@@ -26,7 +28,11 @@ export default function UserDetailsPage() {
           <Typography variant="h4">{user.fullName}</Typography>
           <Typography color="text.secondary">{roleLabels[user.role]}</Typography>
         </Box>
-        <Button variant="outlined" startIcon={<EditIcon />} onClick={() => navigate(`/users/${id}/edit`)}>Редактировать</Button>
+        {currentUser?.role === 'ADMIN' && (
+          <Button variant="outlined" startIcon={<EditIcon />} onClick={() => navigate(`/users/${id}/edit`)}>
+            Редактировать
+          </Button>
+        )}
       </Box>
       <Paper variant="outlined" sx={{ p: 3, display: 'grid', gridTemplateColumns: { md: '1fr 1fr' }, gap: 2 }}>
         <Info label="Email" value={user.email} />
