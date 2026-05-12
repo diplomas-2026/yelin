@@ -1,6 +1,8 @@
 package com.github.danbel.yelinapi.repository;
 
 import com.github.danbel.yelinapi.dto.ProjectDtos.ProjectRequest;
+import com.github.danbel.yelinapi.dto.DashboardDtos.ChartItem;
+import com.github.danbel.yelinapi.dto.DashboardDtos.ProjectRiskItem;
 import com.github.danbel.yelinapi.model.Project;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -29,6 +31,18 @@ public class ProjectRepository {
         if ("ADMIN".equals(role)) {
             return findAll();
         }
+        return jdbc.sql("""
+                        SELECT DISTINCT p.* FROM projects p
+                        LEFT JOIN project_engineers pe ON pe.project_id = p.id
+                        WHERE p.manager_id = :userId OR pe.user_id = :userId
+                        ORDER BY p.id
+                        """)
+                .param("userId", userId)
+                .query(Project.class)
+                .list();
+    }
+
+    public List<Project> findByUserId(Long userId) {
         return jdbc.sql("""
                         SELECT DISTINCT p.* FROM projects p
                         LEFT JOIN project_engineers pe ON pe.project_id = p.id
@@ -130,6 +144,32 @@ public class ProjectRepository {
 
     public int count() {
         return jdbc.sql("SELECT count(*) FROM projects").query(Integer.class).single();
+    }
+
+    public List<ChartItem> countByStatuses() {
+        return jdbc.sql("SELECT status AS label, count(*)::int AS value FROM projects GROUP BY status ORDER BY status")
+                .query(ChartItem.class)
+                .list();
+    }
+
+    public List<ChartItem> countByObjectTypes() {
+        return jdbc.sql("SELECT object_type AS label, count(*)::int AS value FROM projects GROUP BY object_type ORDER BY value DESC")
+                .query(ChartItem.class)
+                .list();
+    }
+
+    public List<ProjectRiskItem> findNearestDeadlines() {
+        return jdbc.sql("""
+                        SELECT p.id, p.name, p.status, u.full_name AS manager_name,
+                               CAST(p.planned_finish_date AS varchar) AS planned_finish_date
+                        FROM projects p
+                        JOIN app_users u ON u.id = p.manager_id
+                        WHERE p.status <> 'Завершен' AND p.planned_finish_date IS NOT NULL
+                        ORDER BY p.planned_finish_date
+                        LIMIT 5
+                        """)
+                .query(ProjectRiskItem.class)
+                .list();
     }
 
     private void replaceEngineers(Long projectId, List<Long> engineerIds) {

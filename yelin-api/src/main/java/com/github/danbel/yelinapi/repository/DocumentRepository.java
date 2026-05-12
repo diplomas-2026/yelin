@@ -1,6 +1,7 @@
 package com.github.danbel.yelinapi.repository;
 
 import com.github.danbel.yelinapi.dto.DocumentDtos.DocumentRequest;
+import com.github.danbel.yelinapi.dto.DashboardDtos.ChartItem;
 import com.github.danbel.yelinapi.model.Document;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -81,5 +82,11 @@ public class DocumentRepository {
 
     public int count() {
         return jdbc.sql("SELECT count(*) FROM documents").query(Integer.class).single();
+    }
+
+    public List<ChartItem> countByStatuses() {
+        return jdbc.sql("SELECT status AS label, count(*)::int AS value FROM documents GROUP BY status ORDER BY status")
+                .query(ChartItem.class)
+                .list();
     }
 }

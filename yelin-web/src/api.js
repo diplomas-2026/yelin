@@ -39,12 +39,27 @@ async function request(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+async function download(path) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Ошибка скачивания: ${response.status}`);
+  }
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="(.+)"/);
+  return { blob: await response.blob(), fileName: match?.[1] || 'document.txt' };
+}
+
 export const api = {
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   dashboard: () => request('/dashboard'),
 
   users: () => request('/users'),
   user: (id) => request(`/users/${id}`),
+  userProjects: (id) => request(`/users/${id}/projects`),
   createUser: (payload) => request('/users', { method: 'POST', body: JSON.stringify(payload) }),
   updateUser: (id, payload) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteUser: (id) => request(`/users/${id}`, { method: 'DELETE' }),
@@ -61,6 +76,7 @@ export const api = {
   createDocument: (payload) => request('/documents', { method: 'POST', body: JSON.stringify(payload) }),
   updateDocument: (id, payload) => request(`/documents/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteDocument: (id) => request(`/documents/${id}`, { method: 'DELETE' }),
+  downloadDocument: (id) => download(`/documents/${id}/download`),
 
   chatMessages: (projectId) => request(`/projects/${projectId}/chat`),
   lastChatMessage: (projectId) => request(`/projects/${projectId}/chat/last`),

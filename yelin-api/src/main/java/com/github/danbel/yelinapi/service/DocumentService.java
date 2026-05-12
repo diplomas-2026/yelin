@@ -3,9 +3,11 @@ package com.github.danbel.yelinapi.service;
 import com.github.danbel.yelinapi.dto.DocumentDtos.DocumentRequest;
 import com.github.danbel.yelinapi.dto.DocumentDtos.DocumentResponse;
 import com.github.danbel.yelinapi.model.Document;
+import com.github.danbel.yelinapi.model.User;
 import com.github.danbel.yelinapi.repository.DocumentRepository;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Service
@@ -29,21 +31,36 @@ public class DocumentService {
         return toResponse(documentRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Документ не найден")));
     }
 
-    public DocumentResponse create(DocumentRequest request) {
-        Long id = documentRepository.create(normalize(request));
+    public DocumentResponse create(DocumentRequest request, User user) {
+        Long id = documentRepository.create(normalize(request, user.id()));
         return findById(id);
     }
 
-    public DocumentResponse update(Long id, DocumentRequest request) {
-        documentRepository.update(id, normalize(request));
+    public DocumentResponse update(Long id, DocumentRequest request, User user) {
+        Document current = documentRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Документ не найден"));
+        Long uploadedBy = request.uploadedBy() == null ? current.uploadedBy() : user.id();
+        documentRepository.update(id, normalize(request, uploadedBy));
         return findById(id);
+    }
+
+    public DownloadedDocument download(Long id) {
+        Document document = documentRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Документ не найден"));
+        String body = """
+                Демонстрационный файл проектной документации
+
+                Документ: %s
+                Файл: %s
+                Версия: %d
+                Статус: %s
+                """.formatted(document.name(), document.fileName(), document.version(), document.status());
+        return new DownloadedDocument(document.fileName(), body.getBytes(StandardCharsets.UTF_8));
     }
 
     public void delete(Long id) {
         documentRepository.delete(id);
     }
 
-    private DocumentRequest normalize(DocumentRequest request) {
+    private DocumentRequest normalize(DocumentRequest request, Long uploadedBy) {
         return new DocumentRequest(
                 request.projectId(),
                 request.name(),
@@ -51,10 +68,12 @@ public class DocumentService {
                 request.fileName(),
                 request.version() == null ? 1 : request.version(),
                 request.status() == null || request.status().isBlank() ? "В работе" : request.status(),
-                request.uploadedBy(),
+                uploadedBy,
                 request.comment()
         );
     }
+
+    public record DownloadedDocument(String fileName, byte[] content) {}
 
     private DocumentResponse toResponse(Document document) {
         var project = projectService.getProject(document.projectId());

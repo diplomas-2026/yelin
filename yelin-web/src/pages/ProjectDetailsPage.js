@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { Box, Button, Divider, Link, Paper, Stack, Typography } from '@mui/material';
+import { Avatar, Box, Button, Divider, IconButton, Link, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
-import { api } from '../api';
+import DownloadIcon from '@mui/icons-material/Download';
+import { api, roleLabels } from '../api';
 import DataTable from '../components/DataTable';
 import ProjectChat from '../components/ProjectChat';
 import StatusChip from '../components/StatusChip';
@@ -21,6 +22,17 @@ export default function ProjectDetailsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  async function downloadDocument(event, documentId) {
+    event.stopPropagation();
+    const file = await api.downloadDocument(documentId);
+    const url = URL.createObjectURL(file.blob);
+    const link = window.document.createElement('a');
+    link.href = url;
+    link.download = file.fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!project) return <Typography>Загрузка...</Typography>;
 
   return (
@@ -33,55 +45,70 @@ export default function ProjectDetailsPage() {
         <StatusChip status={project.status} />
         <Button variant="outlined" startIcon={<EditIcon />} onClick={() => navigate(`/projects/${id}/edit`)}>Редактировать</Button>
       </Box>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { lg: '1fr 420px' }, gap: 2 }}>
-        <Stack spacing={2}>
-          <Paper variant="outlined" sx={{ p: 2.5 }}>
-            <Typography variant="h6">Информация</Typography>
-            <Divider sx={{ my: 2 }} />
-            <Box sx={{ display: 'grid', gridTemplateColumns: { md: '1fr 1fr' }, gap: 2 }}>
-              <Info label="Описание" value={project.description} />
-              <Info label="Адрес" value={project.address} />
-              <Info label="Тип объекта" value={project.objectType} />
-              <Info label="Плановое завершение" value={project.plannedFinishDate} />
-            </Box>
-          </Paper>
-          <Paper variant="outlined" sx={{ p: 2.5 }}>
-            <Typography variant="h6">Участники</Typography>
-            <Divider sx={{ my: 2 }} />
-            <Stack spacing={1}>
-              <Typography>
-                Руководитель: <Link component={RouterLink} to={`/users/${project.managerId}`}>{project.managerName}</Link>
-              </Typography>
-              {project.engineers.map((engineer) => (
-                <Typography key={engineer.id}>
-                  Инженер: <Link component={RouterLink} to={`/users/${engineer.id}`}>{engineer.fullName}</Link>
-                </Typography>
-              ))}
-            </Stack>
-          </Paper>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h5">Документы проекта</Typography>
-            <Button startIcon={<AddIcon />} variant="contained" onClick={() => navigate(`/documents/new?projectId=${id}`)}>Добавить документ</Button>
-          </Box>
-          <DataTable
-            title="Документы"
-            rows={documents}
-            filterField="status"
-            filterLabel="Статус"
-            onRowClick={(row) => navigate(`/documents/${row.id}/edit`)}
-            columns={[
-              { field: 'name', headerName: 'Название' },
-              { field: 'type', headerName: 'Тип' },
-              { field: 'fileName', headerName: 'Файл' },
-              { field: 'version', headerName: 'Версия' },
-              { field: 'status', headerName: 'Статус', render: (row) => <StatusChip status={row.status} /> },
-              { field: 'uploadedByName', headerName: 'Загрузил' },
-            ]}
-          />
-        </Stack>
-        <ProjectChat projectId={id} />
+      <Paper variant="outlined" sx={{ p: 2.5 }}>
+        <Typography variant="h6">Информация</Typography>
+        <Divider sx={{ my: 2 }} />
+        <Box sx={{ display: 'grid', gridTemplateColumns: { md: '1fr 1fr 1fr' }, gap: 2 }}>
+          <Info label="Описание" value={project.description} />
+          <Info label="Адрес" value={project.address} />
+          <Info label="Тип объекта" value={project.objectType} />
+          <Info label="Дата старта" value={project.startDate} />
+          <Info label="Плановое завершение" value={project.plannedFinishDate} />
+          <Info label="Фактическое завершение" value={project.actualFinishDate} />
+        </Box>
+      </Paper>
+      <Box>
+        <Typography variant="h5" sx={{ mb: 1.5 }}>Участники</Typography>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
+          <MemberCard user={{ id: project.managerId, fullName: project.managerName, role: 'PROJECT_MANAGER', positionTitle: 'Руководитель проекта' }} />
+          {project.engineers.map((engineer) => <MemberCard key={engineer.id} user={engineer} />)}
+        </Box>
       </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h5">Документы проекта</Typography>
+        <Button startIcon={<AddIcon />} variant="contained" onClick={() => navigate(`/documents/new?projectId=${id}`)}>Добавить документ</Button>
+      </Box>
+      <DataTable
+        title="Документы"
+        rows={documents}
+        filterField="status"
+        filterLabel="Статус"
+        onRowClick={(row) => navigate(`/documents/${row.id}/edit`)}
+        columns={[
+          { field: 'name', headerName: 'Название' },
+          { field: 'type', headerName: 'Тип' },
+          { field: 'fileName', headerName: 'Файл' },
+          { field: 'version', headerName: 'Версия' },
+          { field: 'status', headerName: 'Статус', render: (row) => <StatusChip status={row.status} /> },
+          { field: 'uploadedByName', headerName: 'Загрузил' },
+          {
+            field: 'download',
+            headerName: 'Скачать',
+            render: (row) => (
+              <Tooltip title="Скачать файл">
+                <IconButton onClick={(event) => downloadDocument(event, row.id)}><DownloadIcon /></IconButton>
+              </Tooltip>
+            ),
+          },
+        ]}
+      />
+      <ProjectChat projectId={id} />
     </Stack>
+  );
+}
+
+function MemberCard({ user }) {
+  return (
+    <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1.5, alignItems: 'center' }}>
+      <Avatar sx={{ bgcolor: user.role === 'PROJECT_MANAGER' ? 'primary.main' : 'secondary.main' }}>{user.fullName[0]}</Avatar>
+      <Box sx={{ minWidth: 0 }}>
+        <Link component={RouterLink} to={`/users/${user.id}`} underline="hover" sx={{ fontWeight: 700 }}>
+          {user.fullName}
+        </Link>
+        <Typography variant="body2" color="text.secondary">{roleLabels[user.role] || user.positionTitle}</Typography>
+        <Typography variant="caption" color="text.secondary">{user.positionTitle || 'Участник проекта'}</Typography>
+      </Box>
+    </Paper>
   );
 }
 

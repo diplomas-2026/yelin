@@ -26,7 +26,11 @@ public class DashboardService {
                 projectRepository.countByStatus("На доработке"),
                 projectRepository.countByStatus("Завершен"),
                 documentRepository.count(),
-                userRepository.count()
+                userRepository.count(),
+                projectRepository.countByStatuses(),
+                projectRepository.countByObjectTypes(),
+                documentRepository.countByStatuses(),
+                projectRepository.findNearestDeadlines()
         );
     }
 }

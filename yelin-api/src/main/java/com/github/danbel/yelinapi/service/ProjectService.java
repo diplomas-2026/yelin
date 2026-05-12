@@ -32,6 +32,10 @@ public class ProjectService {
         return projectRepository.findAll().stream().map(this::toResponse).toList();
     }
 
+    public List<ProjectResponse> findByUserId(Long userId) {
+        return projectRepository.findByUserId(userId).stream().map(this::toResponse).toList();
+    }
+
     public ProjectResponse findById(Long id) {
         return toResponse(getProject(id));
     }
