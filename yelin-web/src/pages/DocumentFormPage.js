@@ -141,9 +141,6 @@ export default function DocumentFormPage() {
           )}
 
           <TextField label="Комментарий" value={document.comment || ''} onChange={(event) => update('comment', event.target.value)} multiline rows={4} />
-          <Typography variant="body2" color="text.secondary">
-            Поля имени файла, типа, версии и статуса убраны из формы. Система определяет их сама и фиксирует автора по JWT-токену.
-          </Typography>
           <Box sx={{ pt: 1 }}>
             <Button type="submit" variant="contained" startIcon={<SaveIcon />} sx={{ height: 44 }}>
               Сохранить

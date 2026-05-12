@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
-import { Avatar, Box, Button, Divider, IconButton, Link, Paper, Stack, Tooltip, Typography } from '@mui/material';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Avatar, Box, Button, Divider, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -59,7 +59,7 @@ export default function ProjectDetailsPage() {
       </Paper>
       <Box>
         <Typography variant="h5" sx={{ mb: 1.5 }}>Участники</Typography>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
           <MemberCard user={{ id: project.managerId, fullName: project.managerName, role: 'PROJECT_MANAGER', positionTitle: 'Руководитель проекта' }} />
           {project.engineers.map((engineer) => <MemberCard key={engineer.id} user={engineer} />)}
         </Box>
@@ -98,24 +98,26 @@ export default function ProjectDetailsPage() {
 }
 
 function MemberCard({ user }) {
+  const navigate = useNavigate();
+
   return (
     <Paper
       variant="outlined"
+      onClick={() => navigate(`/users/${user.id}`)}
       sx={{
         p: 2,
         display: 'flex',
         gap: 1.5,
         alignItems: 'center',
         boxShadow: 'none',
+        cursor: 'pointer',
         transition: 'transform 160ms ease, border-color 160ms ease',
         '&:hover': { transform: 'translateY(-2px)', borderColor: 'primary.main' },
       }}
     >
       <Avatar sx={{ width: 44, height: 44, bgcolor: user.role === 'PROJECT_MANAGER' ? 'primary.main' : 'secondary.main', fontWeight: 800 }}>{user.fullName[0]}</Avatar>
       <Box sx={{ minWidth: 0 }}>
-        <Link component={RouterLink} to={`/users/${user.id}`} underline="hover" sx={{ fontWeight: 700 }}>
-          {user.fullName}
-        </Link>
+        <Typography sx={{ fontWeight: 700 }}>{user.fullName}</Typography>
         <Typography variant="body2" color="text.secondary">{roleLabels[user.role] || user.positionTitle}</Typography>
         <Typography variant="caption" color="text.secondary">{user.positionTitle || 'Участник проекта'}</Typography>
       </Box>
