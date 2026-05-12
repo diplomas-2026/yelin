@@ -44,7 +44,7 @@ export default function AppLayout() {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <AppBar
         position="sticky"
         elevation={0}
@@ -71,56 +71,59 @@ export default function AppLayout() {
           </Paper>
         </Toolbar>
       </AppBar>
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: drawerWidth,
-          '& .MuiDrawer-paper': {
+      <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <Drawer
+          variant="permanent"
+          sx={{
             width: drawerWidth,
-            boxSizing: 'border-box',
-            borderRight: '1px solid rgba(226,232,240,0.86)',
-            bgcolor: 'rgba(255,255,255,0.72)',
-            backdropFilter: 'blur(18px)',
-          },
-        }}
-      >
-        <Toolbar />
-        <Box sx={{ p: 2.25 }}>
-          <Paper elevation={0} sx={{ p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-            <Typography variant="overline" color="text.secondary">ООО МАКС-АРХ</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 800 }}>Проектный офис</Typography>
-          </Paper>
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
+              boxSizing: 'border-box',
+              borderRight: '1px solid rgba(226,232,240,0.86)',
+              bgcolor: 'rgba(255,255,255,0.72)',
+              backdropFilter: 'blur(18px)',
+              position: 'relative',
+            },
+          }}
+        >
+          <Box sx={{ p: 2.25 }}>
+            <Paper elevation={0} sx={{ p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+              <Typography variant="overline" color="text.secondary">ООО МАКС-АРХ</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 800 }}>Проектный офис</Typography>
+            </Paper>
+          </Box>
+          <Divider />
+          <List sx={{ px: 1.5, pt: 1.5 }}>
+            {visibleMenu.map((item) => (
+              <ListItemButton
+                key={item.to}
+                component={NavLink}
+                to={item.to}
+                end={item.to === '/'}
+                sx={{
+                  borderRadius: 2,
+                  mb: 0.75,
+                  minHeight: 48,
+                  color: 'text.secondary',
+                  '& .MuiListItemIcon-root': { color: 'text.secondary', minWidth: 42 },
+                  '&.active': {
+                    bgcolor: 'primary.main',
+                    color: '#fff',
+                    boxShadow: '0 10px 24px rgba(37, 99, 235, 0.22)',
+                    '& .MuiListItemIcon-root': { color: '#fff' },
+                  },
+                }}
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.label} />
+              </ListItemButton>
+            ))}
+          </List>
+        </Drawer>
+        <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, minWidth: 0 }}>
+          <Outlet />
         </Box>
-        <Divider />
-        <List sx={{ px: 1.5, pt: 1.5 }}>
-          {visibleMenu.map((item) => (
-            <ListItemButton
-              key={item.to}
-              component={NavLink}
-              to={item.to}
-              end={item.to === '/'}
-              sx={{
-                borderRadius: 2,
-                mb: 0.75,
-                minHeight: 48,
-                color: 'text.secondary',
-                '& .MuiListItemIcon-root': { color: 'text.secondary', minWidth: 42 },
-                '&.active': {
-                  bgcolor: 'primary.main',
-                  color: '#fff',
-                  boxShadow: '0 10px 24px rgba(37, 99, 235, 0.22)',
-                  '& .MuiListItemIcon-root': { color: '#fff' },
-                },
-              }}
-            >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          ))}
-        </List>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, maxWidth: 'calc(100vw - 264px)' }}>
-        <Outlet />
       </Box>
     </Box>
   );
