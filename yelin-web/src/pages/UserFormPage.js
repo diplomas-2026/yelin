@@ -60,7 +60,7 @@ export default function UserFormPage() {
               <Typography>Активен</Typography>
             </Box>
           </Box>
-          <Box><Button type="submit" variant="contained" startIcon={<SaveIcon />}>Сохранить</Button></Box>
+          <Box sx={{ pt: 1 }}><Button type="submit" variant="contained" startIcon={<SaveIcon />} sx={{ height: 44 }}>Сохранить</Button></Box>
         </Stack>
       </Paper>
     </Stack>

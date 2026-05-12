@@ -41,7 +41,8 @@ export default function DashboardPage() {
       <Grid container spacing={2}>
         {cards.map(([field, label, Icon, color]) => (
           <Grid item xs={12} sm={6} md={3} key={field}>
-            <Paper variant="outlined" sx={{ p: 2.5, height: '100%' }}>
+            <Paper variant="outlined" sx={{ p: 2.5, height: '100%', position: 'relative', overflow: 'hidden' }}>
+              <Box sx={{ position: 'absolute', right: -20, top: -20, width: 90, height: 90, borderRadius: '50%', bgcolor: `${color}12` }} />
               <Stack direction="row" spacing={2} alignItems="center">
                 <Box sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: `${color}18`, color, display: 'grid', placeItems: 'center' }}>
                   <Icon />
@@ -90,7 +91,7 @@ export default function DashboardPage() {
             <Typography variant="h6">Ближайшие сроки</Typography>
             <Stack spacing={1.25} sx={{ mt: 2 }}>
               {(data?.nearestDeadlines || []).map((project) => (
-                <Paper key={project.id} variant="outlined" onClick={() => navigate(`/projects/${project.id}`)} sx={{ p: 1.5, cursor: 'pointer', '&:hover': { borderColor: 'primary.main' } }}>
+                <Paper key={project.id} variant="outlined" onClick={() => navigate(`/projects/${project.id}`)} sx={{ p: 1.5, cursor: 'pointer', boxShadow: 'none', '&:hover': { borderColor: 'primary.main', transform: 'translateY(-1px)' } }}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography fontWeight={700}>{project.name}</Typography>

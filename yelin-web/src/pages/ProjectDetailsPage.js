@@ -99,8 +99,19 @@ export default function ProjectDetailsPage() {
 
 function MemberCard({ user }) {
   return (
-    <Paper variant="outlined" sx={{ p: 2, display: 'flex', gap: 1.5, alignItems: 'center' }}>
-      <Avatar sx={{ bgcolor: user.role === 'PROJECT_MANAGER' ? 'primary.main' : 'secondary.main' }}>{user.fullName[0]}</Avatar>
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2,
+        display: 'flex',
+        gap: 1.5,
+        alignItems: 'center',
+        boxShadow: 'none',
+        transition: 'transform 160ms ease, border-color 160ms ease',
+        '&:hover': { transform: 'translateY(-2px)', borderColor: 'primary.main' },
+      }}
+    >
+      <Avatar sx={{ width: 44, height: 44, bgcolor: user.role === 'PROJECT_MANAGER' ? 'primary.main' : 'secondary.main', fontWeight: 800 }}>{user.fullName[0]}</Avatar>
       <Box sx={{ minWidth: 0 }}>
         <Link component={RouterLink} to={`/users/${user.id}`} underline="hover" sx={{ fontWeight: 700 }}>
           {user.fullName}

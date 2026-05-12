@@ -27,8 +27,8 @@ export default function LoginPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg, #e8f0fe, #f8fafc 45%, #e6f4ea)' }}>
-      <Paper component="form" onSubmit={submit} elevation={4} sx={{ width: 420, p: 4 }}>
+    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', px: 2 }}>
+      <Paper component="form" onSubmit={submit} elevation={0} sx={{ width: 440, p: 4, border: '1px solid #e2e8f0' }}>
         <Stack spacing={2.5}>
           <Box>
             <Typography variant="h4">АРХ-Контроль</Typography>
@@ -37,7 +37,7 @@ export default function LoginPage() {
           {error && <Alert severity="error">{error}</Alert>}
           <TextField label="Email" value={email} onChange={(event) => setEmail(event.target.value)} fullWidth />
           <TextField label="Пароль" type="password" value={password} onChange={(event) => setPassword(event.target.value)} fullWidth />
-          <Button type="submit" size="large" variant="contained" startIcon={<LoginIcon />}>Войти</Button>
+          <Button type="submit" size="large" variant="contained" startIcon={<LoginIcon />} sx={{ height: 48 }}>Войти</Button>
         </Stack>
       </Paper>
     </Box>

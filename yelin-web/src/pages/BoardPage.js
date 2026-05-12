@@ -62,7 +62,7 @@ export default function BoardPage() {
         <Typography color="text.secondary">Доступные колонки подсвечиваются во время перетаскивания карточки</Typography>
       </Box>
       {error && <Alert severity="warning" onClose={() => setError('')}>{error}</Alert>}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(240px, 1fr))', gap: 2, overflowX: 'auto', pb: 1 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(250px, 1fr))', gap: 2, overflowX: 'auto', pb: 1 }}>
         {projectStatuses.map((status) => {
           const available = draggedProject ? canMove(draggedProject, status) : true;
           return (
@@ -74,9 +74,10 @@ export default function BoardPage() {
               sx={{
                 p: 1.5,
                 minHeight: 590,
-                bgcolor: draggedProject && available ? '#e8f0fe' : '#f8fafc',
+                bgcolor: draggedProject && available ? '#eff6ff' : 'rgba(255,255,255,0.72)',
                 borderColor: draggedProject && available ? 'primary.main' : '#dfe3eb',
                 opacity: draggedProject && !available ? 0.62 : 1,
+                boxShadow: draggedProject && available ? '0 18px 46px rgba(37, 99, 235, 0.12)' : undefined,
               }}
             >
               <Stack spacing={1.25} sx={{ mb: 1.5 }}>
@@ -98,10 +99,11 @@ export default function BoardPage() {
                     elevation={0}
                     sx={{
                       p: 1.5,
-                      border: '1px solid #dfe3eb',
+                      border: '1px solid #e2e8f0',
                       cursor: 'grab',
                       bgcolor: '#fff',
-                      '&:hover': { borderColor: 'primary.main', boxShadow: '0 6px 18px rgba(26, 115, 232, 0.14)' },
+                      transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
+                      '&:hover': { borderColor: 'primary.main', boxShadow: '0 12px 30px rgba(37, 99, 235, 0.14)', transform: 'translateY(-2px)' },
                     }}
                   >
                     <Stack spacing={1}>

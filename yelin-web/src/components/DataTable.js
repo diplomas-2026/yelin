@@ -54,10 +54,10 @@ export default function DataTable({ title, rows, columns, filterField, filterLab
   }
 
   return (
-    <Paper variant="outlined">
-      <Toolbar sx={{ gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+    <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
+      <Toolbar sx={{ gap: 2, alignItems: 'center', flexWrap: 'wrap', py: 1.5, bgcolor: 'rgba(248,250,252,0.72)' }}>
         <Typography variant="h6" sx={{ flexGrow: 1 }}>{title}</Typography>
-        <TextField size="small" label="Поиск" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <TextField size="small" label="Поиск" value={search} onChange={(event) => setSearch(event.target.value)} sx={{ minWidth: 260 }} />
         {filterField && (
           <FormControl size="small" sx={{ minWidth: 190 }}>
             <InputLabel>{filterLabel || 'Фильтр'}</InputLabel>
@@ -68,7 +68,7 @@ export default function DataTable({ title, rows, columns, filterField, filterLab
         )}
       </Toolbar>
       <TableContainer>
-        <Table>
+        <Table sx={{ minWidth: 760 }}>
           <TableHead>
             <TableRow>
               {columns.map((column) => (
@@ -86,7 +86,11 @@ export default function DataTable({ title, rows, columns, filterField, filterLab
                 key={getRowId ? getRowId(row) : row.id}
                 hover
                 onClick={() => onRowClick?.(row)}
-                sx={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                sx={{
+                  cursor: onRowClick ? 'pointer' : 'default',
+                  '&:last-child td': { borderBottom: 0 },
+                  '&:hover': { bgcolor: 'rgba(37, 99, 235, 0.04)' },
+                }}
               >
                 {columns.map((column) => (
                   <TableCell key={column.field}>{column.render ? column.render(row) : row[column.field]}</TableCell>

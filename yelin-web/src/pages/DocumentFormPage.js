@@ -81,7 +81,7 @@ export default function DocumentFormPage() {
           </Box>
           <Typography variant="body2" color="text.secondary">Поле “Загрузил” система заполнит автоматически по текущему JWT-токену.</Typography>
           <TextField label="Комментарий" value={document.comment || ''} onChange={(event) => update('comment', event.target.value)} multiline rows={3} />
-          <Box><Button type="submit" variant="contained" startIcon={<SaveIcon />}>Сохранить</Button></Box>
+          <Box sx={{ pt: 1 }}><Button type="submit" variant="contained" startIcon={<SaveIcon />} sx={{ height: 44 }}>Сохранить</Button></Box>
         </Stack>
       </Paper>
     </Stack>
