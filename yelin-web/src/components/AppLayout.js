@@ -36,6 +36,7 @@ const menu = [
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const visibleMenu = user?.role === 'ADMIN' ? menu : menu.filter((item) => item.to !== '/users');
 
   function handleLogout() {
     logout();
@@ -45,7 +46,7 @@ export default function AppLayout() {
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBar
-        position="fixed"
+        position="sticky"
         elevation={0}
         sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1,
@@ -92,7 +93,7 @@ export default function AppLayout() {
         </Box>
         <Divider />
         <List sx={{ px: 1.5, pt: 1.5 }}>
-          {menu.map((item) => (
+          {visibleMenu.map((item) => (
             <ListItemButton
               key={item.to}
               component={NavLink}
@@ -118,7 +119,7 @@ export default function AppLayout() {
           ))}
         </List>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, pt: 12, maxWidth: 'calc(100vw - 264px)' }}>
+      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, maxWidth: 'calc(100vw - 264px)' }}>
         <Outlet />
       </Box>
     </Box>
