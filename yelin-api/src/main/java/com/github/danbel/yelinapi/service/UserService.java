@@ -33,11 +33,19 @@ public class UserService {
     }
 
     public UserResponse create(UserRequest request) {
+        userRepository.findByEmail(request.email()).ifPresent(user -> {
+            throw new IllegalArgumentException("Пользователь с таким email уже существует");
+        });
         Long id = userRepository.create(request);
         return findById(id);
     }
 
     public UserResponse update(Long id, UserRequest request) {
+        userRepository.findByEmail(request.email()).ifPresent(existing -> {
+            if (!existing.id().equals(id)) {
+                throw new IllegalArgumentException("Пользователь с таким email уже существует");
+            }
+        });
         userRepository.update(id, request);
         return findById(id);
     }
