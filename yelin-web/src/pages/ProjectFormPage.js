@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import { api, projectStatuses } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 const emptyProject = {
   name: '',
@@ -35,6 +36,7 @@ const emptyProject = {
 export default function ProjectFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [project, setProject] = useState(emptyProject);
   const [users, setUsers] = useState([]);
   const isEdit = Boolean(id);
@@ -49,8 +51,10 @@ export default function ProjectFormPage() {
         plannedFinishDate: data.plannedFinishDate || '',
         actualFinishDate: data.actualFinishDate || '',
       }));
+    } else if (currentUser?.role === 'PROJECT_MANAGER') {
+      setProject((current) => ({ ...current, managerId: currentUser.id }));
     }
-  }, [id, isEdit]);
+  }, [id, isEdit, currentUser]);
 
   function update(field, value) {
     setProject((current) => ({ ...current, [field]: value }));
@@ -60,7 +64,7 @@ export default function ProjectFormPage() {
     event.preventDefault();
     const payload = {
       ...project,
-      managerId: Number(project.managerId),
+      managerId: Number(currentUser?.role === 'PROJECT_MANAGER' ? currentUser.id : project.managerId),
       engineerIds: project.engineerIds.map(Number),
       startDate: project.startDate || null,
       plannedFinishDate: project.plannedFinishDate || null,
@@ -90,12 +94,16 @@ export default function ProjectFormPage() {
                 {projectStatuses.map((status) => <MenuItem key={status} value={status}>{status}</MenuItem>)}
               </Select>
             </FormControl>
-            <FormControl required>
-              <InputLabel>Руководитель</InputLabel>
-              <Select label="Руководитель" value={project.managerId || ''} onChange={(event) => update('managerId', event.target.value)}>
-                {managers.map((user) => <MenuItem key={user.id} value={user.id}>{user.fullName}</MenuItem>)}
-              </Select>
-            </FormControl>
+            {currentUser?.role === 'PROJECT_MANAGER' ? (
+              <TextField label="Руководитель" value={currentUser.fullName} disabled />
+            ) : (
+              <FormControl required>
+                <InputLabel>Руководитель</InputLabel>
+                <Select label="Руководитель" value={project.managerId || ''} onChange={(event) => update('managerId', event.target.value)}>
+                  {managers.map((user) => <MenuItem key={user.id} value={user.id}>{user.fullName}</MenuItem>)}
+                </Select>
+              </FormControl>
+            )}
             <FormControl>
               <InputLabel>Инженеры</InputLabel>
               <Select
