@@ -3,6 +3,7 @@ import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, Button, Divider, Link, Paper, Stack, Typography } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { api } from '../api';
 
 export default function DocumentDetailsPage() {
@@ -25,6 +26,13 @@ export default function DocumentDetailsPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function removeDocument() {
+    const confirmed = window.confirm('Удалить документ?');
+    if (!confirmed) return;
+    await api.deleteDocument(id);
+    navigate(`/projects/${document.projectId}`);
+  }
+
   if (error) {
     return <Alert severity="error">{error}</Alert>;
   }
@@ -43,6 +51,9 @@ export default function DocumentDetailsPage() {
           </Typography>
         </Box>
         <Button variant="outlined" startIcon={<DownloadIcon />} onClick={download}>Скачать</Button>
+        <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={removeDocument}>
+          Удалить
+        </Button>
         <Button variant="contained" startIcon={<EditIcon />} onClick={() => navigate(`/documents/${id}/edit`)}>Редактировать</Button>
       </Box>
 
