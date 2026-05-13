@@ -79,7 +79,7 @@ export default function ProjectDetailsPage() {
         rows={documents}
         filterField="status"
         filterLabel="Статус"
-        onRowClick={(row) => navigate(`/documents/${row.id}/edit`)}
+        onRowClick={(row) => navigate(`/documents/${row.id}`)}
         columns={[
           { field: 'name', headerName: 'Название' },
           { field: 'type', headerName: 'Тип' },

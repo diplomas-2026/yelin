@@ -39,7 +39,7 @@ export default function DocumentsPage() {
         rows={documents}
         filterField="status"
         filterLabel="Статус"
-        onRowClick={(row) => navigate(`/documents/${row.id}/edit`)}
+        onRowClick={(row) => navigate(`/documents/${row.id}`)}
         columns={[
           { field: 'name', headerName: 'Название' },
           { field: 'projectName', headerName: 'Проект' },
@@ -51,7 +51,7 @@ export default function DocumentsPage() {
             headerName: 'Действия',
             render: (row) => (
               <>
-                <Tooltip title="Редактировать"><IconButton onClick={(event) => { event.stopPropagation(); navigate(`/documents/${row.id}/edit`); }}><EditIcon /></IconButton></Tooltip>
+                <Tooltip title="Открыть"><IconButton onClick={(event) => { event.stopPropagation(); navigate(`/documents/${row.id}`); }}><EditIcon /></IconButton></Tooltip>
                 <Tooltip title="Удалить"><IconButton onClick={(event) => removeDocument(event, row.id)}><DeleteIcon /></IconButton></Tooltip>
               </>
             ),

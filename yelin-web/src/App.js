@@ -7,6 +7,7 @@ import BoardPage from './pages/BoardPage';
 import DashboardPage from './pages/DashboardPage';
 import DocumentFormPage from './pages/DocumentFormPage';
 import DocumentsPage from './pages/DocumentsPage';
+import DocumentDetailsPage from './pages/DocumentDetailsPage';
 import LoginPage from './pages/LoginPage';
 import ProjectDetailsPage from './pages/ProjectDetailsPage';
 import ProjectFormPage from './pages/ProjectFormPage';
@@ -40,6 +41,7 @@ function App() {
               <Route path="projects/:id/edit" element={<ProjectFormPage />} />
               <Route path="documents" element={<DocumentsPage />} />
               <Route path="documents/new" element={<DocumentFormPage />} />
+              <Route path="documents/:id" element={<DocumentDetailsPage />} />
               <Route path="documents/:id/edit" element={<DocumentFormPage />} />
               <Route path="users" element={<UsersPage />} />
               <Route path="users/new" element={<UserFormPage />} />
