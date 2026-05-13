@@ -51,6 +51,9 @@ public class UserService {
     }
 
     public void delete(Long id) {
+        if (!userRepository.existsActiveById(id)) {
+            throw new IllegalArgumentException("Пользователь не найден");
+        }
         userRepository.delete(id);
     }
 

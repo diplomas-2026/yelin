@@ -17,11 +17,14 @@ public class UserRepository {
     }
 
     public List<User> findAll() {
-        return jdbc.sql("SELECT * FROM app_users ORDER BY id").query(User.class).list();
+        return jdbc.sql("SELECT * FROM app_users WHERE active = true ORDER BY id").query(User.class).list();
     }
 
     public Optional<User> findById(Long id) {
-        return jdbc.sql("SELECT * FROM app_users WHERE id = :id").param("id", id).query(User.class).optional();
+        return jdbc.sql("SELECT * FROM app_users WHERE id = :id AND active = true")
+                .param("id", id)
+                .query(User.class)
+                .optional();
     }
 
     public Optional<User> findByEmail(String email) {
@@ -72,6 +75,14 @@ public class UserRepository {
 
     public void delete(Long id) {
         jdbc.sql("UPDATE app_users SET active = false WHERE id = :id").param("id", id).update();
+    }
+
+    public boolean existsActiveById(Long id) {
+        Integer count = jdbc.sql("SELECT count(*) FROM app_users WHERE id = :id AND active = true")
+                .param("id", id)
+                .query(Integer.class)
+                .single();
+        return count > 0;
     }
 
     public int count() {

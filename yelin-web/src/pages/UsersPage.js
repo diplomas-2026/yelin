@@ -21,7 +21,7 @@ export default function UsersPage() {
     event.stopPropagation();
     if (window.confirm('Удалить пользователя?')) {
       await api.deleteUser(id);
-      load();
+      setUsers((current) => current.filter((user) => user.id !== id));
     }
   }
 
