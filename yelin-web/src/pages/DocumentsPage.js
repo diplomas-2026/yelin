@@ -6,7 +6,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { api } from '../api';
 import DataTable from '../components/DataTable';
-import StatusChip from '../components/StatusChip';
 
 export default function DocumentsPage() {
   const navigate = useNavigate();
@@ -46,8 +45,6 @@ export default function DocumentsPage() {
           { field: 'projectName', headerName: 'Проект' },
           { field: 'type', headerName: 'Тип' },
           { field: 'fileName', headerName: 'Файл' },
-          { field: 'version', headerName: 'Версия' },
-          { field: 'status', headerName: 'Статус', render: (row) => <StatusChip status={row.status} /> },
           { field: 'uploadedByName', headerName: 'Загрузил' },
           {
             field: 'actions',
