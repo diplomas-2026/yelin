@@ -84,8 +84,6 @@ export default function ProjectDetailsPage() {
           { field: 'name', headerName: 'Название' },
           { field: 'type', headerName: 'Тип' },
           { field: 'fileName', headerName: 'Файл' },
-          { field: 'version', headerName: 'Версия' },
-          { field: 'status', headerName: 'Статус', render: (row) => <StatusChip status={row.status} /> },
           { field: 'uploadedByName', headerName: 'Загрузил' },
           {
             field: 'download',
