@@ -266,8 +266,6 @@ public DashboardResponse getDashboard() {
 
 ```javascript
 export default function ProjectsPage() {
-  const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
   const [projects, setProjects] = useState([]);
 
   async function load() {
@@ -285,14 +283,21 @@ export default function ProjectsPage() {
   }
 
   return (
-    <Stack spacing={2}>
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="h4">Проекты</Typography>
-          <Typography color="text.secondary">Нажмите на строку, чтобы открыть карточку проекта</Typography>
-        </Box>
-      </Box>
-    </Stack>
+      <DataTable
+        title="Реестр проектов"
+        rows={projects}
+        filterField="status"
+        filterLabel="Статус"
+        onRowClick={(row) => navigate(`/projects/${row.id}`)}
+        columns={[
+          { field: 'name', headerName: 'Проект' },
+          { field: 'customer', headerName: 'Заказчик' },
+          { field: 'objectType', headerName: 'Тип объекта' },
+          { field: 'managerName', headerName: 'Руководитель' },
+          { field: 'status', headerName: 'Статус', render: (row) => <StatusChip status={row.status} /> },
+          { field: 'documentsCount', headerName: 'Документы' },
+        ]}
+      />
   );
 }
 ```
