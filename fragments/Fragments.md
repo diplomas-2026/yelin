@@ -320,6 +320,36 @@ async function submit(event) {
 ### Листинг кода программного продукта страниц на 3-4.
 
 ```java
+public List<ProjectResponse> findAllFor(User user) {
+    return projectRepository.findAvailableForUser(user.id(), user.role()).stream().map(this::toResponse).toList();
+}
+
+public List<ProjectResponse> findAll() {
+    return projectRepository.findAll().stream().map(this::toResponse).toList();
+}
+
+public List<ProjectResponse> findByUserId(Long userId) {
+    return projectRepository.findByUserId(userId).stream().map(this::toResponse).toList();
+}
+
+public ProjectResponse findById(Long id) {
+    return toResponse(getProject(id));
+}
+
+public Project getProject(Long id) {
+    return projectRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Проект не найден"));
+}
+
+public ProjectResponse create(ProjectRequest request) {
+    Long id = projectRepository.create(normalize(request));
+    return findById(id);
+}
+
+public ProjectResponse update(Long id, ProjectRequest request) {
+    projectRepository.update(id, normalize(request));
+    return findById(id);
+}
+
 public ProjectResponse updateStatus(Long id, String status, User user) {
     Project project = getProject(id);
     if ("ENGINEER".equals(user.role()) && (!ENGINEER_EDIT_STATUSES.contains(project.status()) || !"На проверке".equals(status))) {
@@ -327,6 +357,148 @@ public ProjectResponse updateStatus(Long id, String status, User user) {
     }
     projectRepository.updateStatus(id, status);
     return findById(id);
+}
+
+public boolean canOpenProjectChat(Long projectId, User user) {
+    return "ADMIN".equals(user.role()) || projectRepository.isParticipant(projectId, user.id());
+}
+
+public ProjectResponse toResponse(Project project) {
+    User manager = userService.getUser(project.managerId());
+    var engineers = projectRepository.findEngineerIds(project.id()).stream()
+            .map(userService::getUser)
+            .map(userService::toResponse)
+            .toList();
+    return new ProjectResponse(
+            project.id(),
+            project.name(),
+            project.description(),
+            project.customer(),
+            project.address(),
+            project.objectType(),
+            project.status(),
+            project.managerId(),
+            manager.fullName(),
+            engineers,
+            documentRepository.countByProjectId(project.id()),
+            project.startDate(),
+            project.plannedFinishDate(),
+            project.actualFinishDate(),
+            project.createdAt(),
+            project.updatedAt()
+    );
+}
+
+private ProjectRequest normalize(ProjectRequest request) {
+    String status = request.status() == null || request.status().isBlank() ? "Новый" : request.status();
+    return new ProjectRequest(
+            request.name(),
+            request.description(),
+            request.customer(),
+            request.address(),
+            request.objectType(),
+            status,
+            request.managerId(),
+            request.engineerIds(),
+            request.startDate(),
+            request.plannedFinishDate(),
+            request.actualFinishDate()
+    );
+}
+
+public Long create(ProjectRequest request) {
+    Long id = jdbc.sql("""
+                    INSERT INTO projects (name, description, customer, address, object_type, status, manager_id,
+                                          start_date, planned_finish_date, actual_finish_date)
+                    VALUES (:name, :description, :customer, :address, :objectType, :status, :managerId,
+                            :startDate, :plannedFinishDate, :actualFinishDate)
+                    RETURNING id
+                    """)
+            .param("name", request.name())
+            .param("description", request.description())
+            .param("customer", request.customer())
+            .param("address", request.address())
+            .param("objectType", request.objectType())
+            .param("status", request.status())
+            .param("managerId", request.managerId())
+            .param("startDate", request.startDate())
+            .param("plannedFinishDate", request.plannedFinishDate())
+            .param("actualFinishDate", request.actualFinishDate())
+            .query(Long.class)
+            .single();
+    replaceEngineers(id, request.engineerIds());
+    return id;
+}
+
+public void update(Long id, ProjectRequest request) {
+    jdbc.sql("""
+                    UPDATE projects
+                    SET name = :name, description = :description, customer = :customer, address = :address,
+                        object_type = :objectType, status = :status, manager_id = :managerId,
+                        start_date = :startDate, planned_finish_date = :plannedFinishDate,
+                        actual_finish_date = :actualFinishDate, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :id
+                    """)
+            .param("id", id)
+            .param("name", request.name())
+            .param("description", request.description())
+            .param("customer", request.customer())
+            .param("address", request.address())
+            .param("objectType", request.objectType())
+            .param("status", request.status())
+            .param("managerId", request.managerId())
+            .param("startDate", request.startDate())
+            .param("plannedFinishDate", request.plannedFinishDate())
+            .param("actualFinishDate", request.actualFinishDate())
+            .update();
+    replaceEngineers(id, request.engineerIds());
+}
+
+public void updateStatus(Long id, String status) {
+    jdbc.sql("UPDATE projects SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE id = :id")
+            .param("id", id)
+            .param("status", status)
+            .update();
+}
+
+public List<Long> findEngineerIds(Long projectId) {
+    return jdbc.sql("SELECT user_id FROM project_engineers WHERE project_id = :projectId ORDER BY user_id")
+            .param("projectId", projectId)
+            .query(Long.class)
+            .list();
+}
+
+public boolean isParticipant(Long projectId, Long userId) {
+    Integer count = jdbc.sql("""
+                    SELECT count(*) FROM projects p
+                    LEFT JOIN project_engineers pe ON pe.project_id = p.id
+                    WHERE p.id = :projectId AND (p.manager_id = :userId OR pe.user_id = :userId)
+                    """)
+            .param("projectId", projectId)
+            .param("userId", userId)
+            .query(Integer.class)
+            .single();
+    return count > 0;
+}
+
+public List<ChartItem> countByStatuses() {
+    return jdbc.sql("SELECT status AS label, count(*)::int AS value FROM projects GROUP BY status ORDER BY status")
+            .query(ChartItem.class)
+            .list();
+}
+
+public List<ProjectRiskItem> findNearestDeadlines() {
+    return jdbc.sql("""
+                    SELECT p.id, p.name, p.status, u.full_name AS manager_name,
+                           CAST(p.planned_finish_date AS varchar) AS planned_finish_date
+                    FROM projects p
+                    JOIN app_users u ON u.id = p.manager_id
+                    WHERE p.status <> 'Завершен' AND p.planned_finish_date IS NOT NULL
+                    ORDER BY p.planned_finish_date
+                    LIMIT 5
+                    """)
+            .query(ProjectRiskItem.class)
+            .list();
 }
 
 private void replaceEngineers(Long projectId, List<Long> engineerIds) {
@@ -338,21 +510,5 @@ private void replaceEngineers(Long projectId, List<Long> engineerIds) {
             .param("projectId", projectId)
             .param("userId", userId)
             .update());
-}
-
-public DashboardResponse getDashboard() {
-    return new DashboardResponse(
-            projectRepository.count(),
-            projectRepository.countByStatus("В работе"),
-            projectRepository.countByStatus("На проверке"),
-            projectRepository.countByStatus("На доработке"),
-            projectRepository.countByStatus("Завершен"),
-            documentRepository.count(),
-            userRepository.count(),
-            projectRepository.countByStatuses(),
-            projectRepository.countByObjectTypes(),
-            documentRepository.countByStatuses(),
-            projectRepository.findNearestDeadlines()
-    );
 }
 ```
